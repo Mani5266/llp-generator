@@ -30,11 +30,11 @@ export default function LoginPage() {
     try {
       if (isSignUp) {
         const { error: signUpError } = await signUp(email, password);
-        if (signUpError) { setError(signUpError.message); }
+        if (signUpError) { setError(signUpError); }
         else { setSuccess("Account created! Check your email for confirmation, or sign in if email confirmation is disabled."); }
       } else {
         const { error: signInError } = await signIn(email, password);
-        if (signInError) { setError(signInError.message); }
+        if (signInError) { setError(signInError); }
         else { router.replace("/dashboard"); }
       }
     } catch { setError("Something went wrong. Please try again."); }
