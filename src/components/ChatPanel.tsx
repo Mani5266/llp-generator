@@ -15,13 +15,14 @@ interface Props {
 export default function ChatPanel({data,step,done,pct,onUpdates,onStep,onDone,onRestart,onRestore,onBackToDashboard}:Props) {
   const { theme, toggle } = useTheme();
   const [msgs,setMsgs] = useState<Msg[]>([
-    { role:"agent", content:"✨ Welcome to Deed AI Assistant!\n\nI am your AI legal assistant. I will craft a perfect LLP Agreement for you by asking a few conversational questions.\n\nHow many partners will be part of the LLP firm in total?", options:["2","3","4","5"] },
+    { role:"agent", content:"✨ Welcome to Deed AI Assistant!\n\nI am your AI legal assistant. I will craft a perfect LLP Agreement for you by asking a few conversational questions.\n\nHow many partners will be part of the LLP firm in total?", options:["2","3","4","5","5+"] },
   ]);
   const [input,setInput] = useState("");
   const [busy,setBusy]   = useState(false);
   const [checkedItems,setCheckedItems] = useState<Record<string,boolean>>({});
   const [selectedImage, setSelectedImage] = useState<{file:File, base64:string, mimeType:string, url:string} | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(()=>{ endRef.current?.scrollIntoView({behavior:"smooth"}); },[msgs,busy]);
@@ -133,7 +134,34 @@ export default function ChatPanel({data,step,done,pct,onUpdates,onStep,onDone,on
                 <div style={{display:"flex",flexWrap:"wrap" as const,gap:6}}>
                   {m.options.map((o,j)=>{
                     const label = typeof o === "object" ? ((o as any).label || (o as any).value || JSON.stringify(o)) : String(o);
-                    return <button key={j} style={{padding:"8px 18px",fontSize:13,border:"1.5px solid var(--border-color)",borderRadius:24,background:"var(--bg-option)",color:"var(--text-primary)",cursor:"pointer",fontFamily:"inherit",fontWeight:500,transition:"all .15s",boxShadow:"var(--shadow-sm)"}} onClick={()=>send(label)}>{label}</button>;
+                    return (
+                      <button 
+                        key={j} 
+                        className="suggestion-btn"
+                        style={{
+                          padding:"8px 20px",
+                          fontSize:13,
+                          border:"none",
+                          borderRadius:24,
+                          background:"var(--accent)", 
+                          color:"#fff",
+                          cursor:"pointer",
+                          fontFamily:"inherit",
+                          fontWeight:600,
+                          transition:"all .2s ease",
+                          boxShadow:"0 2px 6px rgba(0,0,0,0.15)"
+                        }} 
+                        onClick={()=>{
+                          if (label === "5+") {
+                            textareaRef.current?.focus();
+                          } else {
+                            send(label);
+                          }
+                        }}
+                      >
+                        {label}
+                      </button>
+                    );
                   })}
                 </div>
               )}
@@ -212,7 +240,9 @@ export default function ChatPanel({data,step,done,pct,onUpdates,onStep,onDone,on
               <button style={{width:38,height:38,borderRadius:"50%",background:"transparent",color:"var(--text-muted)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}} onClick={()=>fileInputRef.current?.click()} disabled={busy}>
                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
               </button>
-              <textarea style={{flex:1,padding:"10px 14px",fontSize:13,border:"1.5px solid var(--border-input)",borderRadius:24,background:"var(--bg-input)",color:"var(--text-primary)",fontFamily:"'Inter','Segoe UI',system-ui,sans-serif",outline:"none",resize:"none",minHeight:40,maxHeight:100,lineHeight:1.5,width:"100%",transition:"background .3s ease, border-color .3s ease"}} value={input} placeholder="Type or upload Aadhaar..."
+              <textarea 
+                ref={textareaRef}
+                style={{flex:1,padding:"10px 14px",fontSize:13,border:"1.5px solid var(--border-input)",borderRadius:24,background:"var(--bg-input)",color:"var(--text-primary)",fontFamily:"'Inter','Segoe UI',system-ui,sans-serif",outline:"none",resize:"none",minHeight:40,maxHeight:100,lineHeight:1.5,width:"100%",transition:"background .3s ease, border-color .3s ease"}} value={input} placeholder="Type or upload Aadhaar..."
                 onChange={e=>{setInput(e.target.value);e.target.style.height="40px";e.target.style.height=Math.min(e.target.scrollHeight,100)+"px";}}
                 onKeyDown={onKey} rows={1} disabled={busy}/>
               <button style={{width:38,height:38,borderRadius:"50%",background:"var(--accent)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,opacity:busy||(!input.trim()&&!selectedImage)?.5:1,transition:"opacity .2s"}} onClick={()=>send(input)} disabled={busy||(!input.trim()&&!selectedImage)}>

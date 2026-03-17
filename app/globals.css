@@ -209,3 +209,13 @@ input:focus, textarea:focus {
   border-color: var(--accent) !important;
   box-shadow: 0 0 0 3px rgba(26,155,108,0.15) !important;
 }
+
+.suggestion-btn:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2) !important;
+}
+.suggestion-btn:active {
+  transform: translateY(1px);
+  filter: brightness(0.95);
+}
