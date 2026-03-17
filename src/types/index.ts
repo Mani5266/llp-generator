@@ -86,7 +86,7 @@ export function getMissing(d: LLPData): string[] {
     if (!p.fullName) m.push(`Partner ${i+1} Name`);
     if (!p.fatherName) m.push(`Partner ${i+1} Father Name`);
     if (!p.age) m.push(`Partner ${i+1} Age`);
-    if (!p.address?.doorNo) m.push(`Partner ${i+1} Address`);
+    if (!p.address || fmtPartnerAddr(p.address).length < 10) m.push(`Partner ${i+1} Address`);
   });
   if (d.partners.filter(p=>p.isDesignatedPartner).length < 2) m.push("Min 2 Designated Partners");
   if (!d.totalCapital) m.push("Capital Amount");
