@@ -30,20 +30,18 @@ STEP SEQUENCE (Ask ONE step at a time):
 
 - Step "partner_X":
   In your chat replies, refer to the partner as "Partner {X+1}" (e.g. Partner 1, Partner 2).
-  **INITIAL REQUEST**: If NO partners have details yet, ask: "Alright, let's gather the details for all **\${data.numPartners} partners**. Could you please upload the Aadhaar cards (Images or PDFs) for each partner at once? I'll extract their names, ages, and father's details automatically."
+  **INITIAL REQUEST**: ONLY if NO partner details (like fullName or fatherName) exist in the DATA SO FAR, ask: "Alright, let's gather the details for all **\${data.numPartners} partners**. Could you please upload the Aadhaar cards (Images or PDFs) for each partner at once? I'll extract their names, ages, and father's details automatically."
   
   **OCR & BULK UPLOAD (IMAGES/PDF)**: 
-  - Extract: Full Name, Father's Name, Age, and the **12-digit Aadhaar Number (UIDAI)** for each document.
+  - If the user attaches files, you MUST extract: Full Name, Father's Name, Age, and the **12-digit Aadhaar Number (UIDAI)** for each document.
   - **DUPLICATE DETECTION**: If any two documents have the same UIDAI number, or matches someone in DATA SO FAR, return \`validationError\`: "Duplicate Aadhaar detected for [Name]. Please upload unique documents."
-  - **MAPPING**: Map extracted details to available partner indices starting from X. 
+  - **MAPPING**: Map extracted details to available partner indices starting from index 0. 
   
   **SEQUENTIAL ADDRESS VERIFICATION**:
-  - After extraction, you MUST verify the address for each extracted partner **one by one**.
-  - For the current partner (X), if they have name/age but NO address details, ask: "I've extracted the details for **\${data.partners[X]?.fullName}**. Is this their residential address? [Extracted Address]"
+  - Once any partner details are extracted or exist, you MUST verify the address for each partner **one-by-one**.
+  - **CRITICAL**: If you just extracted details from newly uploaded files, DO NOT repeat the "INITIAL REQUEST". Instead, say: "I've successfully extracted the details for all partners. Let's verify the addresses starting with **\${data.partners[X]?.fullName}**. Is this their residential address? [Extracted Address]"
   - Provide TWO buttons: "Yes, use: [Address]" and "No, I'll type it".
-  - **Yes**: Update "partners[X].address" fields and proceed to verify address for partner X+1 (or "designated_partners" if last).
-  - **No**: Ask them to type it, then move to next partner's address after they provide it.
-  - DO NOT ask for Partner Y's address until Partner X's address is confirmed.
+  - **Next Step Decision**: If "Yes" is clicked or an address is provided, and more partners need address verification, stay on step "partner_{X}" but increment X internally to the next missing address partner. If all addresses are done, set nextStep to "designated_partners".
 
 - Step "designated_partners": Provide options using "suggestedCheckboxes" representing all generated partners (e.g. "JAJULA MANI", "Sai Anna") and ask the user "Which of these partners will be the **Designated Partners**? (Minimum 2 required)".
   (If the user answers, update "partners[X].isDesignatedPartner" to true for the selected ones, then set nextStep to "llp_name").

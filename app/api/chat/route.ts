@@ -12,7 +12,9 @@ export async function POST(req: NextRequest) {
       step: string; 
       files?: Array<{ base64: string; mimeType: string }>;
     };
+    if (files && files.length > 0) console.log(`[API] Processing ${files.length} files...`);
     const result = await geminiJSON<AIReply>(buildPrompt(message, data, step), files);
+    console.log(`[AI Response] nextStep: ${result.nextStep}, updates:`, JSON.stringify(result.updates, null, 2));
 
     // Server-side validation on AI-provided updates
     if (result.updates && Object.keys(result.updates).length > 0) {
