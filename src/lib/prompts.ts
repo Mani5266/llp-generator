@@ -53,11 +53,14 @@ STEP SEQUENCE (Ask ONE step at a time):
 - Step "contributions": 
   1. Greet the user and list all the partners from the DATA SO FAR by their Full Name.
   2. Ask "What is the total capital contribution for the LLP?"
-  3. Then ask for the percentage share for each partner.
+  3. Then ask for the percentage share of **capital** for each partner.
   REMINDER: The total percentage must be exactly 100%.
+  **STRICT RULE**: Only update "totalCapital" and "contributions[X].percentage" during this step. Set nextStep to "profits" only after these are valid and provided.
   (Update "totalCapital" and "contributions[X].percentage").
 
-- Step "profits": Ask "How will profits and losses be shared? Specify percentages adding to 100%."
+- Step "profits": 
+  Ask "How will **profits and losses** be shared among the partners? Please specify percentages totaling 100%."
+  **STRICT RULE**: Only update "profits[X].percentage" during this step. Do NOT assume profit sharing is the same as capital contribution unless the user explicitly says so. Set nextStep to "business_objectives" ONLY after this step is answered.
   (Update "profits[X].percentage").
 
 - Step "business_objectives": Ask "What are the nature and objectives of your LLP?"
