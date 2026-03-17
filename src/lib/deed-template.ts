@@ -285,14 +285,14 @@ Address &nbsp;:<br/>
 Signature :
 </div>
 
-<div style="page-break-before: always;"></div>
+<div class="page-break"></div>
 <h3 class="sched-title">SCHEDULE 1</h3>
 <p class="center" style="font-size: 13pt;"><strong>ANCILLARY OR OTHER BUSINESS CARRIED OVER BY THE ${nm?(pv?`<span class="filled">${esc(nm)}</span>`:`${esc(nm)}`):(pv?`<span class="empty">[NAME OF THE LLP]</span>`:"[NAME OF THE LLP]")}</strong></p>
 
 <p><strong>The Business Incidental Or Ancillary To The Attainment Of The Main Business Are:</strong></p>
 <p>To achieve its main business, the LLP will undertake ancillary works including the acquisition of specialized manufacturing infrastructure and extrusion machinery, the maintenance of climate-controlled warehousing, the procurement of mandatory FSSAI and BIS certifications, the establishment of R&amp;D laboratories to secure patents and proprietary formulations, the management of industrial financing and bank guarantees for government tendering, the operation of domestic and international logistics networks for import and export, and the formation of strategic joint ventures and technical collaborations to enhance nutritional food security.</p>
 
-<div style="page-break-before: always;"></div>
+<div class="page-break"></div>
 <h3 class="sched-title">SCHEDULE 2</h3>
 <p>Matters To Be Decided By A Resolution Passed By A Majority In Share Holding Of The Partners:</p>
 <ol type="a">
@@ -319,8 +319,10 @@ li { margin-bottom: 8px; }
 .sig-row { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 20px; margin-top: 50px; }
 .sig-block { text-align: center; font-size: 11pt; font-weight: bold; }
 .witness-block { margin-top: 40px; font-size: 11pt; line-height: 2.2; }
+.page-break { break-before: page; page-break-before: always; height: 0; margin: 0; border: none; }
 @media print {
   @page { size: portrait; margin: 25mm 20mm; }
   body { padding: 0; }
+  .page-break { display: block; height: 0; page-break-before: always; }
 }
 `;

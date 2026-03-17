@@ -116,10 +116,11 @@ async function buildDocx(d: LLPData): Promise<Buffer> {
       CTR(`M/S. ${nm}`,true,24), BR(), BR(), BR(),
       new Paragraph({spacing:{after:80},children:[tnr("(Designated Partner)\t\t\t\t\t\t\t(Designated Partner)")]}),
       BR(), BR(), PB("Witness:"), BR(), P("Name\t\t:"), P("Address\t:"), P("Signature\t:"), BR(), P("Name\t\t:"), P("Address\t:"), P("Signature\t:"),
-      BR(), BR(), CTR("SCHEDULE 1",true,26), BR(), CTR(`ANCILLARY OR OTHER BUSINESS CARRIED OVER BY THE M/S. ${nm}`,true,20), BR(),
+      BR(), BR(), new Paragraph({ text: "SCHEDULE 1", heading: "Heading1", alignment: AlignmentType.CENTER, pageBreakBefore: true, spacing: { after: 200 } }),
+      CTR(`ANCILLARY OR OTHER BUSINESS CARRIED OVER BY THE M/S. ${nm}`,true,20), BR(),
       PB("The  Business Incidental Or Ancillary  To The Attainment Of The Main Business Are:"), BR(),
       P("To achieve its main business, the LLP will undertake ancillary works including the acquisition of specialized manufacturing infrastructure and extrusion machinery, the maintenance of climate-controlled warehousing, the procurement of mandatory FSSAI and BIS certifications, the establishment of R&D laboratories to secure patents and proprietary formulations, the management of industrial financing and bank guarantees for government tendering, the operation of domestic and international logistics networks for import and export, and the formation of strategic joint ventures and technical collaborations to enhance nutritional food security."),
-      BR(), BR(), CTR("SCHEDULE 2",true,26), BR(),
+      BR(), BR(), new Paragraph({ text: "SCHEDULE 2", heading: "Heading1", alignment: AlignmentType.CENTER, pageBreakBefore: true, spacing: { after: 200 } }),
       P("Matters To Be Decided By A Resolution Passed By A Majority In Share Holding Of The Partners:"), BR(),
       P("Change in Registered office Address"), P("Admission of New Partner"), P("Removal of existing partner"), P("Change in Bank Account Operations"),
     ]}]});

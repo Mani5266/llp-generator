@@ -162,6 +162,31 @@ html,body {
 .deed-wrap li {margin-bottom:8px;text-align:justify;}
 .deed-wrap .sub-sec {font-size:11pt; font-weight:bold; margin-top:14px; margin-bottom:10px; text-decoration: underline;}
 .deed-wrap .indent-block p {margin-left: 20px;}
+.deed-wrap .page-break {
+  display: block;
+  border-top: 2px dashed var(--border-color);
+  margin: 60px -52px;
+  position: relative;
+  height: 0;
+}
+.deed-wrap .page-break::after {
+  content: "PAGE BREAK (PDF/DOCX)";
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-paper);
+  padding: 0 12px;
+  font-size: 9px;
+  font-family: sans-serif;
+  color: var(--text-muted);
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+@media print {
+  .deed-wrap .page-break { border: none; margin: 0; }
+  .deed-wrap .page-break::after { display: none; }
+}
 
 /* ── Scrollbar ── */
 ::-webkit-scrollbar{width:5px;}
