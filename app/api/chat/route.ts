@@ -27,8 +27,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(result);
   } catch (err) {
     console.error("chat error:", err);
+    let errorMessage = "Sorry, I had trouble with that. Please try again.";
+    if (err instanceof Error) {
+      errorMessage = `AI Error: ${err.message}`;
+    }
     return NextResponse.json({
-      message: "Sorry, I had trouble with that. Please try again.",
+      message: errorMessage,
       validationError: err instanceof Error ? err.message : "error",
       suggestedOptions: [],
       suggestedCheckboxes: [],
