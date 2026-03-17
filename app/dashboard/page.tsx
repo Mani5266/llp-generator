@@ -43,14 +43,6 @@ export default function DashboardPage() {
       .then(({ data, error }) => {
         if (!error && data) {
           setAgreements(data as AgreementRow[]);
-        } else if (error) {
-          supabase
-            .from("agreements")
-            .select("*")
-            .order("updated_at", { ascending: false })
-            .then(({ data: allData }) => {
-              if (allData) setAgreements(allData as AgreementRow[]);
-            });
         }
         setFetching(false);
       });
@@ -58,19 +50,11 @@ export default function DashboardPage() {
 
   const createNew = async () => {
     if (!user) return;
-    let result = await supabase
+    const result = await supabase
       .from("agreements")
       .insert([{ data: defaultData(), step: "num_partners", is_done: false, user_id: user.id }])
       .select()
       .single();
-
-    if (result.error) {
-      result = await supabase
-        .from("agreements")
-        .insert([{ data: defaultData(), step: "num_partners", is_done: false }])
-        .select()
-        .single();
-    }
 
     if (result.error) {
       alert("Failed to create agreement: " + result.error.message);

@@ -61,13 +61,6 @@ export default function LLPApp() {
         if (!error && dbData) {
           setSessionId(dbData.id);
           window.history.replaceState({}, "", `?id=${dbData.id}`);
-        } else if (error) {
-          supabase.from("agreements").insert([{ data: defaultData(), step: "num_partners", is_done: false }]).select().single().then(({ data: fallbackData }) => {
-            if (fallbackData) {
-              setSessionId(fallbackData.id);
-              window.history.replaceState({}, "", `?id=${fallbackData.id}`);
-            }
-          });
         }
       });
     }
