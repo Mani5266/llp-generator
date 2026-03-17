@@ -144,7 +144,7 @@ html,body {
 .card-hover:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
 
 /* ── Deed preview inside the paper card ── */
-.deed-wrap{font-family:"Times New Roman",Times,serif;font-size:11pt;line-height:1.85;color:#1a1a18;padding:40px 52px;}
+.deed-wrap{font-family:"Times New Roman",Times,serif;font-size:11pt;line-height:1.85;color:#1a1a18;padding:120px 52px 40px;}
 [data-theme="dark"] .deed-wrap { color: #e6edf3; }
 .deed-wrap .deed-title{text-align:center;font-size:14pt;font-weight:bold;text-decoration:underline;margin-bottom:4px;}
 .deed-wrap .deed-sub{text-align:center;font-size:10pt;margin-bottom:20px;}

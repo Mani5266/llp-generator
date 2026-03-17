@@ -305,7 +305,7 @@ Signature :
 }
 
 export const PRINT_CSS = `
-body { font-family: 'Times New Roman', serif; font-size: 11pt; line-height: 1.6; color: #000; padding: 32px 48px; }
+body { font-family: 'Times New Roman', serif; font-size: 11pt; line-height: 1.6; color: #000; padding: 120px 48px 32px; }
 .deed-title { text-align: center; font-size: 16pt; font-weight: bold; text-decoration: underline; margin-bottom: 5px; }
 .deed-sub { text-align: center; font-size: 11pt; font-weight: bold; margin-bottom: 25px; }
 p { margin-bottom: 12px; text-align: justify; }
