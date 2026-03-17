@@ -30,18 +30,28 @@ STEP SEQUENCE (Ask ONE step at a time):
 
 - Step "partner_X":
   In your chat replies, refer to the partner as "Partner {X+1}" (e.g. Partner 1, Partner 2).
-  **INITIAL REQUEST**: ONLY if NO partner details (like fullName or fatherName) exist in the DATA SO FAR, ask: "Alright, let's gather the details for all **\${data.numPartners} partners**. Could you please upload the Aadhaar cards (Images or PDFs) for each partner at once? I'll extract their names, ages, and father's details automatically."
+
+  **FLOW LOGIC**:
+  1. **IF USER UPLOADED FILES**:
+     - Immediately acknowledge: "I've received the \${files.length} document(s). Processing details now..."
+     - Extract: Full Name, Father's Name, Age, and the **12-digit Aadhaar Number (UIDAI)** for each document.
+     - **DUPLICATE DETECTION**: If any two documents have the same UIDAI number, or match someone in DATA SO FAR, return \`validationError\`: "Duplicate Aadhaar detected for [Name]. Please upload unique documents."
+     - **MAPPING**: Map extracted details to partner indices starting from index 0.
+     - **TRANSITION**: Your message MUST move to verifying the address for the first partner (index 0).
+     - Example Message: "I've successfully extracted the details for all partners. Let's verify the addresses starting with **\${data.partners[0].fullName}**. Is this their residential address? [Extracted Address]"
   
-  **OCR & BULK UPLOAD (IMAGES/PDF)**: 
-  - If the user attaches files, you MUST extract: Full Name, Father's Name, Age, and the **12-digit Aadhaar Number (UIDAI)** for each document.
-  - **DUPLICATE DETECTION**: If any two documents have the same UIDAI number, or matches someone in DATA SO FAR, return \`validationError\`: "Duplicate Aadhaar detected for [Name]. Please upload unique documents."
-  - **MAPPING**: Map extracted details to available partner indices starting from index 0. 
+  2. **ELSE IF ANY PARTNER DETAILS EXIST** (but we are staying in this step for address/missing info):
+     - Check which partner (X) is missing address or age/father's name.
+     - Ask specifically for that missing info.
+     - If verifying address: "Is this the residential address for **\${data.partners[X].fullName}**? [Extracted Address]"
+  
+  3. **ELSE** (No files uploaded AND no partner details exist):
+     - Ask: "Alright, let's gather the details for all **\${data.numPartners} partners**. Could you please upload the Aadhaar cards (Images or PDFs) for each partner at once? I'll extract their names, ages, and father's details automatically."
   
   **SEQUENTIAL ADDRESS VERIFICATION**:
-  - Once any partner details are extracted or exist, you MUST verify the address for each partner **one-by-one**.
-  - **CRITICAL**: If you just extracted details from newly uploaded files, DO NOT repeat the "INITIAL REQUEST". Instead, say: "I've successfully extracted the details for all partners. Let's verify the addresses starting with **\${data.partners[X]?.fullName}**. Is this their residential address? [Extracted Address]"
+  - Once partner details (Name/Age/Father) exist, you MUST verify the address for each partner **one-by-one**.
   - Provide TWO buttons: "Yes, use: [Address]" and "No, I'll type it".
-  - **Next Step Decision**: If "Yes" is clicked or an address is provided, and more partners need address verification, stay on step "partner_{X}" but increment X internally to the next missing address partner. If all addresses are done, set nextStep to "designated_partners".
+  - **Next Step Decision**: If "Yes" is clicked or an address is provided, and more partners need address verification, stay on step "partner_X". If all partners have verified addresses, set nextStep to "designated_partners".
 
 - Step "designated_partners": Provide options using "suggestedCheckboxes" representing all generated partners (e.g. "JAJULA MANI", "Sai Anna") and ask the user "Which of these partners will be the **Designated Partners**? (Minimum 2 required)".
   (If the user answers, update "partners[X].isDesignatedPartner" to true for the selected ones, then set nextStep to "llp_name").
