@@ -150,7 +150,7 @@ export default function ChatPanel({data,step,done,pct,onUpdates,onStep,onDone,on
                           fontSize:13,
                           border:"none",
                           borderRadius:24,
-                          background:"var(--accent)", 
+                          background: label.toLowerCase().startsWith("yes") ? "#16a34a" : (label.toLowerCase().startsWith("no") ? "#dc2626" : "var(--accent)"), 
                           color:"#fff",
                           cursor:"pointer",
                           fontFamily:"inherit",
