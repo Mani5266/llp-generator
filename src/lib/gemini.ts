@@ -11,23 +11,25 @@ function client() {
   return _client;
 }
 
-export async function geminiText(prompt: string, image?: { base64: string; mimeType: string }): Promise<string> {
-  const m = client().getGenerativeModel({ model: "gemini-2.5-flash" });
+export async function geminiText(prompt: string, files?: Array<{ base64: string; mimeType: string }>): Promise<string> {
+  const m = client().getGenerativeModel({ model: "gemini-1.5-flash" });
   const parts: any[] = [{ text: prompt }];
-  if (image) {
-    parts.push({
-      inlineData: {
-        data: image.base64,
-        mimeType: image.mimeType,
-      },
-    });
+  if (files && files.length > 0) {
+    for (const f of files) {
+      parts.push({
+        inlineData: {
+          data: f.base64,
+          mimeType: f.mimeType,
+        },
+      });
+    }
   }
   const r = await m.generateContent(parts);
   return r.response.text().trim();
 }
 
-export async function geminiJSON<T>(prompt: string, image?: { base64: string; mimeType: string }): Promise<T> {
-  const raw = await geminiText(prompt + "\n\nReturn ONLY valid JSON. No markdown, no code fences, no explanation.", image);
+export async function geminiJSON<T>(prompt: string, files?: Array<{ base64: string; mimeType: string }>): Promise<T> {
+  const raw = await geminiText(prompt + "\n\nReturn ONLY valid JSON. No markdown, no code fences, no explanation.", files);
   const clean = raw.replace(/^```json\s*/i,"").replace(/^```\s*/i,"").replace(/```\s*$/i,"").trim();
   return JSON.parse(clean) as T;
 }

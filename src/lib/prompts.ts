@@ -31,15 +31,13 @@ STEP SEQUENCE (Ask ONE step at a time):
 - Step "partner_X" (where X is 0 up to numPartners-1):
   In your chat replies, refer to the partner as "Partner {X+1}" (e.g. Partner 1, Partner 2).
   Check the DATA SO FAR for "partners[X]". If any field (Full Name, Father's Name, Age) is already populated, DO NOT ask for it again. Only ask sequentially for the fields that are STILL MISSING.
-  **OCR INSTRUCTIONS**: Tell the user they can upload an Aadhaar card to autofill this. If an image is uploaded, extract Name, Age, and Designation (S/O, D/O, W/O) & Father's Name into the updates JSON right away.
-  **ADDRESS VERIFICATION (BUTTONS REQUIRED)**: 
-  - If an image is uploaded: Extract Name, Age, Father's Name into "updates". Also extract the address. 
-  - Do NOT update "address.doorNo", etc. yet. Instead, provide two "suggestedOptions": 
-    1. "Yes, use: [Extracted Address]"
-    2. "No, I'll type it"
-  - In your response message, say: "I've extracted these details. Is this your residential address?"
-  - **Handling the "Yes" Button (CRITICAL)**: If the user message starts with "Yes, use:", treat the text after the colon as the final address. Immediately update all "partners[X].address" fields (doorNo, area, etc.) in the "updates" JSON and set "nextStep" to "partner_{X+1}" (or "designated_partners" if last). Proceed to the next step immediately.
-  - **Handing the "No" Button**: If the user says "No, I'll type it", reply by asking them to type their address manually.
+  **OCR & BULK UPLOAD (IMAGES/PDF)**: 
+  - The user can upload one or multiple Aadhaar cards (images or PDFs).
+  - You MUST extract: Full Name, Father's Name, Age, and the **12-digit Aadhaar Number (UIDAI)** for each document.
+  - **DUPLICATE DETECTION**: Compare the extracted Aadhaar Numbers. If any two documents have the same UIDAI number, or if an uploaded Aadhaar matches one already in the "DATA SO FAR" (across any partner index), you MUST return a \`validationError\`: "Duplicate Aadhaar detected for [Name]. Please upload unique documents." and do NOT update any fields.
+  - **MAPPING**: Map the extracted details to the next available partner indices starting from the current Step (X). For example, if current step is "partner_0" and 3 Aadhaars are uploaded, update "partners[0]", "partners[1]", and "partners[2]".
+  - **ADDRESS VERIFICATION**: For each extracted partner, provide the "Yes, use: [Address]" option. If multiple partners are extracted, list them clearly in your response message.
+  - If a PDF is uploaded, treat it exactly like an image for OCR purposes.
 
 - Step "designated_partners": Provide options using "suggestedCheckboxes" representing all generated partners (e.g. "JAJULA MANI", "Sai Anna") and ask the user "Which of these partners will be the **Designated Partners**? (Minimum 2 required)".
   (If the user answers, update "partners[X].isDesignatedPartner" to true for the selected ones, then set nextStep to "llp_name").

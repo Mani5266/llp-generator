@@ -20,7 +20,7 @@ export default function ChatPanel({data,step,done,pct,onUpdates,onStep,onDone,on
   const [input,setInput] = useState("");
   const [busy,setBusy]   = useState(false);
   const [checkedItems,setCheckedItems] = useState<Record<string,boolean>>({});
-  const [selectedImage, setSelectedImage] = useState<{file:File, base64:string, mimeType:string, url:string} | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<{file:File, base64:string, mimeType:string, url:string}[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -31,17 +31,17 @@ export default function ChatPanel({data,step,done,pct,onUpdates,onStep,onDone,on
 
   const send = useCallback(async(text:string)=>{
     const msg=text.trim(); 
-    if((!msg && !selectedImage) || busy) return;
+    if((!msg && selectedFiles.length === 0) || busy) return;
     setInput(""); 
-    const curImg = selectedImage;
-    setSelectedImage(null);
+    const curFiles = [...selectedFiles];
+    setSelectedFiles([]);
     const snapshot = { data: JSON.parse(JSON.stringify(data)), step, done };
-    push({role:"user",content: curImg ? `[Attached Image] ${msg}` : msg, snapshot}); 
+    push({role:"user",content: curFiles.length > 0 ? `[Attached ${curFiles.length} file(s)] ${msg}` : msg, snapshot}); 
     setBusy(true);
     try {
       const payload = {
         message:msg, data, step,
-        ...(curImg ? { imageBase64: curImg.base64, imageMimeType: curImg.mimeType } : {})
+        files: curFiles.length > 0 ? curFiles.map(f => ({ base64: f.base64, mimeType: f.mimeType })) : undefined
       };
       const r = await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
       const ai = await r.json();
@@ -51,18 +51,25 @@ export default function ChatPanel({data,step,done,pct,onUpdates,onStep,onDone,on
       push({ role:"agent", content: ai.validationError?`⚠️ ${ai.validationError}\n\n${ai.message}`:ai.message, options:ai.suggestedOptions?.length?ai.suggestedOptions:undefined, checkboxes:ai.suggestedCheckboxes?.length?ai.suggestedCheckboxes:undefined });
     } catch { push({role:"agent",content:"Something went wrong. Please try again."}); }
     finally { setBusy(false); }
-  },[busy,data,step,push,onUpdates,onStep,onDone,selectedImage]);
-  
-  const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const result = event.target?.result as string;
-      const base64 = result.split(',')[1];
-      setSelectedImage({ file, base64, mimeType: file.type, url: result });
-    };
-    reader.readAsDataURL(file);
+  },[busy,data,step,push,onUpdates,onStep,onDone,selectedFiles]);
+
+  const handleFileSelect = async (e: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const newFiles = await Promise.all(files.map(file => {
+      return new Promise<{file:File, base64:string, mimeType:string, url:string}>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const result = event.target?.result as string;
+          const base64 = result.split(',')[1];
+          resolve({ file, base64, mimeType: file.type, url: result });
+        };
+        reader.readAsDataURL(file);
+      });
+    }));
+
+    setSelectedFiles(prev => [...prev, ...newFiles]);
     if(fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -226,17 +233,26 @@ export default function ChatPanel({data,step,done,pct,onUpdates,onStep,onDone,on
       {/* Input */}
       {!done&&(
         <div style={{display:"flex",flexDirection:"column",background:"var(--bg-secondary)",borderTop:"1px solid var(--border-color)",flexShrink:0,transition:"background .3s ease"}}>
-          {selectedImage && (
-            <div style={{padding:"12px 16px 0",display:"flex",gap:8}}>
-              <div style={{position:"relative",display:"inline-block"}}>
-                <img src={selectedImage.url} alt="upload preview" style={{width:60,height:60,borderRadius:8,objectFit:"cover",border:"2px solid var(--accent)"}} />
-                <button style={{position:"absolute",top:-6,right:-6,width:20,height:20,borderRadius:"50%",background:"#ef4444",color:"white",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,border:"none",cursor:"pointer"}} onClick={()=>setSelectedImage(null)}>✕</button>
-              </div>
+          {selectedFiles.length > 0 && (
+            <div style={{padding:"12px 16px 0",display:"flex",gap:8,overflowX:"auto"}}>
+              {selectedFiles.map((f, idx) => (
+                <div key={idx} style={{position:"relative",display:"inline-block",flexShrink:0}}>
+                  {f.mimeType === "application/pdf" ? (
+                    <div style={{width:60,height:60,borderRadius:8,background:"#fee2e2",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",border:"2px solid #ef4444",gap:2}}>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+                      <span style={{fontSize:9,fontWeight:700,color:"#ef4444"}}>PDF</span>
+                    </div>
+                  ) : (
+                    <img src={f.url} alt="upload preview" style={{width:60,height:60,borderRadius:8,objectFit:"cover",border:"2px solid var(--accent)"}} />
+                  )}
+                  <button style={{position:"absolute",top:-6,right:-6,width:20,height:20,borderRadius:"50%",background:"#ef4444",color:"white",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,border:"none",cursor:"pointer",zIndex:10}} onClick={()=>setSelectedFiles(prev=>prev.filter((_,i)=>i!==idx))}>✕</button>
+                </div>
+              ))}
             </div>
           )}
           <div style={{padding:"10px 14px"}}>
             <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
-              <input type="file" accept="image/*" ref={fileInputRef} style={{display:"none"}} onChange={handleFileSelect} />
+              <input type="file" accept="image/*,application/pdf" multiple ref={fileInputRef} style={{display:"none"}} onChange={handleFileSelect} />
               <button style={{width:38,height:38,borderRadius:"50%",background:"transparent",color:"var(--text-muted)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}} onClick={()=>fileInputRef.current?.click()} disabled={busy}>
                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
               </button>
@@ -245,7 +261,7 @@ export default function ChatPanel({data,step,done,pct,onUpdates,onStep,onDone,on
                 style={{flex:1,padding:"10px 14px",fontSize:13,border:"1.5px solid var(--border-input)",borderRadius:24,background:"var(--bg-input)",color:"var(--text-primary)",fontFamily:"'Inter','Segoe UI',system-ui,sans-serif",outline:"none",resize:"none",minHeight:40,maxHeight:100,lineHeight:1.5,width:"100%",transition:"background .3s ease, border-color .3s ease"}} value={input} placeholder="Type or upload Aadhaar..."
                 onChange={e=>{setInput(e.target.value);e.target.style.height="40px";e.target.style.height=Math.min(e.target.scrollHeight,100)+"px";}}
                 onKeyDown={onKey} rows={1} disabled={busy}/>
-              <button style={{width:38,height:38,borderRadius:"50%",background:"var(--accent)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,opacity:busy||(!input.trim()&&!selectedImage)?.5:1,transition:"opacity .2s"}} onClick={()=>send(input)} disabled={busy||(!input.trim()&&!selectedImage)}>
+              <button style={{width:38,height:38,borderRadius:"50%",background:"var(--accent)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,opacity:busy||(!input.trim()&&selectedFiles.length===0)?.5:1,transition:"opacity .2s"}} onClick={()=>send(input)} disabled={busy||(!input.trim()&&selectedFiles.length===0)}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
               </button>
             </div>

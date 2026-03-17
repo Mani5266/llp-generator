@@ -6,9 +6,13 @@ import { validateUpdates } from "@/lib/validation";
 
 export async function POST(req: NextRequest) {
   try {
-    const { message, data, step, imageBase64, imageMimeType } = await req.json() as { message: string; data: Partial<LLPData>; step: string; imageBase64?: string; imageMimeType?: string };
-    const image = (imageBase64 && imageMimeType) ? { base64: imageBase64, mimeType: imageMimeType } : undefined;
-    const result = await geminiJSON<AIReply>(buildPrompt(message, data, step), image);
+    const { message, data, step, files } = await req.json() as { 
+      message: string; 
+      data: Partial<LLPData>; 
+      step: string; 
+      files?: Array<{ base64: string; mimeType: string }>;
+    };
+    const result = await geminiJSON<AIReply>(buildPrompt(message, data, step), files);
 
     // Server-side validation on AI-provided updates
     if (result.updates && Object.keys(result.updates).length > 0) {
