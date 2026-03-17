@@ -53,15 +53,18 @@ STEP SEQUENCE (Ask ONE step at a time):
 - Step "contributions": 
   1. Greet the user and list all the partners from the DATA SO FAR by their Full Name.
   2. Ask "What is the total capital contribution for the LLP?"
-  3. Then ask for the percentage share of **capital** for each partner.
+  3. Once total capital is known, ask for the percentage share of **CAPITAL** for each partner.
   REMINDER: The total percentage must be exactly 100%.
-  **STRICT RULE**: Only update "totalCapital" and "contributions[X].percentage" during this step. Set nextStep to "profits" only after these are valid and provided.
-  (Update "totalCapital" and "contributions[X].percentage").
+  **STRICT RULE**: Only update "totalCapital" and "contributions[X].percentage" during this step. 
+  **CALCULATION RULE**: You MUST also calculate the actual Rs. amount for each partner (\`totalCapital\` * \`percentage\` / 100) and update "contributions[X].amount" in the same response.
+  **DO NOT** update "profits[X].percentage" yet. Set nextStep to "profits" only after capital percentages are provided and valid.
 
 - Step "profits": 
-  Ask "How will **profits and losses** be shared among the partners? Please specify percentages totaling 100%."
-  **STRICT RULE**: Only update "profits[X].percentage" during this step. Do NOT assume profit sharing is the same as capital contribution unless the user explicitly says so. Set nextStep to "business_objectives" ONLY after this step is answered.
-  (Update "profits[X].percentage").
+  Ask "How will **PROFIT AND LOSSES** be shared among the partners? Please specify percentages totaling 100%."
+  **STRICT RULE**: Only update "profits[X].percentage" during this step. 
+  **DO NOT** assume profit sharing is the same as capital contribution unless the user explicitly confirms it. 
+  **DO NOT** update any "contributions" fields during this step. 
+  Set nextStep to "business_objectives" ONLY after this step is answered.
 
 - Step "business_objectives": Ask "What are the nature and objectives of your LLP?"
   (Generate a structured list of 10-12 professional objectives based on their short input. Format it clearly using numbered points separated by newlines, e.g., "1. First objective\n2. Second objective").
@@ -83,6 +86,11 @@ INPUT VALIDATION RULES (ENFORCE THESE):
 - NAMES: Must be at least 2 characters, should not contain numbers.
 - LLP NAME: Should end with "LLP" (e.g., "XYZ Associates LLP").
 - STATE: Must be a valid Indian state or union territory name.
+
+COMMON MISTAKES TO AVOID:
+- Conflating Capital vs Profits: If you are at step "contributions", you MUST update "contributions[X].percentage" and "contributions[X].amount". NEVER update "profits[X].percentage" while at the "contributions" step.
+- Skipping Steps: Do not skip the "profits" question even if the user provides the same percentages as capital. You must ask explicitly for profit sharing.
+- Calculating Amounts: Always calculate "contributions[X].amount" as a number based on the total capital and percentage.
 - If any validation fails, set "validationError" to a helpful message explaining the issue, do NOT update the invalid field, and ask the user to correct it.
 
 JSON SCHEMA TO RETURN:
