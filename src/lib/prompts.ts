@@ -32,7 +32,6 @@ STEP SEQUENCE (Ask ONE step at a time):
 
 - Step "num_partners": Ask "How many partners will be part of the LLP firm in total?"
   (If the user answers, update "numPartners", then set nextStep to "partner_0").
-
 - Step "partner_X" (Applies to all partner collection):
   Collects details for Partner 1, Partner 2, etc.
 
@@ -43,25 +42,33 @@ STEP SEQUENCE (Ask ONE step at a time):
      - Return to the **INITIAL REQUEST** below.
 
   1. **IF ATTACHED DOCUMENTS > 0**:
-     - Extract: Full Name, Father's Name, Age, UIDAI, and Address.
-     - **MAPPING**: Update "partners[0...]" with extracted details.
-     - **TRANSITION**: Acknowledge extraction and IMMEDIATELY ask to verify the address for Partner 1.
-     - **CRITICAL**: You MUST provide these EXACT \`suggestedOptions\`: ["Yes: [Extracted Address]", "No: I'll type it"].
+     - **EXTRACTION**: Extract the Full Name, Father's Name, and Age for **ALL** partners from the provided documents.
+     - **PLACERHOLDERS**: You MUST leave the \`address\` fields (doorNo, area, city, district, state, pin) empty (null or "") during this initial extraction. This ensures the document shows "[Residential Address]" placeholders.
+     - **MAPPING**: Update "partners[X].fullName", "partners[X].fatherName", and "partners[X].age" for each partner found. Store the raw extracted address string in "partners[X].aadhaarAddress".
+     - **OCR CONFIDENCE**: If any field (e.g. Age or Father's Name) is blurry/unclear, add a note to your message: "Note: [Field] for [Partner Name] was a bit unclear, could you please double-check it?"
+     - **TRANSITION**: Acknowledge extraction for all partners and IMMEDIATELY ask to verify the address for Partner 1.
+     - **CRITICAL**: You MUST provide these EXACT \`suggestedOptions\`: ["Yes: [Extracted Address for Partner 1]", "No: I'll type it"].
 
   2. **IF PARTNER NAMES EXIST BUT SOME ADDRESSES ARE EMPTY**:
      - **CRITICAL: NEVER show the "INITIAL REQUEST" if any partner already has a name.**
-     - Currently, Partner ${nextPartnerIndex + 1} (${nextPartner?.fullName || "the partner"}) is missing an address.
-     - Ask: "Is this the residential address for Partner ${nextPartnerIndex + 1} (${nextPartner?.fullName})? [Extracted Address]"
-     - **CRITICAL**: You MUST provide these EXACT \`suggestedOptions\`: ["Yes: [Extracted Address]", "No: I'll type it"]. (Replace [Extracted Address] with the actual address string).
+     - Find the first partner index (i) where "partners[i].address.pin" is empty.
+     - Use the stored "partners[i].aadhaarAddress" for the verification question.
+     - Ask: "Is this the residential address for Partner ${nextPartnerIndex + 1} (${nextPartner?.fullName})? [Aadhaar Address]"
+     - **CRITICAL**: You MUST provide these EXACT \`suggestedOptions\`: ["Yes: [Aadhaar Address]", "No: I'll type it"].
 
   3. **ELSE (No data and No files)**:
      - **INITIAL REQUEST**: "Alright, let's gather the details for all ${data.numPartners} partners. Could you please upload the Aadhaar cards (Images or PDFs) for each partner at once? I'll extract their names, ages, and father's details automatically."
-     - Provide buttons: ["2", "3", "4", "5", "5+"].
 
   **SEQUENTIAL ADDRESS VERIFICATION**:
   - For every address question, you MUST provide the "Yes: [Address]" and "No: I'll type it" buttons.
   - If "Yes" is clicked, update the partner's address fields.
-  - After the LAST partner's address is verified, set nextStep to "designated_partners".
+  - After the LAST partner's address is verified, set nextStep to "partner_summary".
+
+- Step "partner_summary":
+  Display a summary of all partners (Name, Age, Father, Address).
+  Ask: "Does everything look correct for all partners?"
+  Provide Buttons: ["Everything is Correct", "No, I need to edit"].
+  (If correct, set nextStep to "designated_partners").
 
 - Step "designated_partners": Provide options using "suggestedCheckboxes" representing all generated partners (e.g. "JAJULA MANI", "Sai Anna") and ask the user "Which of these partners will be the **Designated Partners**? (Minimum 2 required)".
   (If the user answers, update "partners[X].isDesignatedPartner" to true for the selected ones, then set nextStep to "llp_name").
@@ -86,10 +93,36 @@ STEP SEQUENCE (Ask ONE step at a time):
   **STRICT RULE**: Only update "profits[X].percentage" during this step. 
   **DO NOT** assume profit sharing is the same as capital contribution unless the user explicitly confirms it. 
   **DO NOT** update any "contributions" fields during this step. 
-  Set nextStep to "business_objectives" ONLY after this step is answered.
+  Set nextStep to "governance" ONLY after this step is answered.
 
-- Step "business_objectives": Ask "What are the nature and objectives of your LLP?"
-  (Generate a structured list of 10-12 professional objectives based on their short input. Format it clearly using numbered points separated by newlines, e.g., "1. First objective\n2. Second objective").
+- Step "governance": 
+  Ask "How will the **Bank Account** be operated?"
+  Provide Buttons (simplified labels): ["Any Two Partners Jointly", "Single Partner", "All Partners Jointly"].
+  Update "bankAuthority" and set nextStep to "remuneration".
+
+- Step "remuneration":
+  Ask "How should **Remuneration to Partners** be structured?"
+  Provide Buttons: ["Percentage of Profit", "Fixed Monthly Amount", "No Remuneration"].
+  Update "remunerationType". If fixed/percentage, ask for the value (e.g. "15% of profits" or "₹10,000 per month").
+  Set nextStep to "loans".
+
+- Step "loans":
+  Ask "Should the agreement enable **Partner Loans** to the LLP?"
+  Provide Buttons: ["Yes, Enable Loans", "No, Disable"].
+  If Yes, update "loansEnabled" to true and "loanInterestRate" to 12 (default).
+  Set nextStep to "arbitration".
+
+- Step "arbitration":
+  Ask "In which city should **Dispute Resolution/Arbitration** take place?"
+  Suggest the registered office district as a button.
+  Update "arbitrationCity" and set nextStep to "business_objectives".
+
+- Step "business_objectives":
+  1. Ask for 2-3 nature/objectives of the LLP.
+  2. Generate 10-12 structured business clauses.
+  3. Ask: "I've generated these 12 objectives. Would you like to keep all of them, or should I limit it to a specific number?"
+  Provide Buttons: ["Keep All", "Limit to 5", "Edit Manually"].
+  Update "businessObjectives" and set nextStep to "other_points".
 
 - Step "other_points": Ask "Do you want to include any other specific points? (Yes/No)"
   1. ALWAYS provide suggestedOptions: ["Yes", "No"].
@@ -145,6 +178,7 @@ FIELD PATHS ALLOWED IN UPDATES:
 "partners[X].address.district" → string
 "partners[X].address.state" → string
 "partners[X].address.pin" → string
+"partners[X].aadhaarAddress" → string
 "llpName" → string
 "executionDate" → string
 "executionCity" → string (auto-derived from registeredAddress.district — set this when registered_address is completed)
@@ -157,6 +191,12 @@ FIELD PATHS ALLOWED IN UPDATES:
 "contributions[X].percentage" → number
 "contributions[X].amount" → number
 "profits[X].percentage" → number
+"bankAuthority" → string
+"remunerationType" → string
+"remunerationValue" → string
+"loansEnabled" → boolean
+"loanInterestRate" → number
+"arbitrationCity" → string
 "businessObjectives" → string
 "otherPoints" → string`;
 }
