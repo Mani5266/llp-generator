@@ -236,42 +236,96 @@ ELSE:
 
     business_objectives: `
 ## STEP: Business Objectives
-Ask: "Briefly describe the main business activity of your LLP."
-When user provides a description, generate EXACTLY 10 clear, professional business objective points based on their input.
-Format them as a numbered list in the message.
-Ask: "Would you like to include these objectives in the agreement?"
-If Yes: Set "businessObjectives": "<all 10 points as a single formatted string with newlines>"
-nextStep: "other_points"
-If No: Ask them to type their own objectives directly.`,
+USER input: "${userMsg}"
+CURRENT businessObjectives in DATA: "${(data as LLPData).businessObjectives || ""}"
+
+CASE 1 — IF user's input is "yes", "Yes", "Yes, include", "include" (affirmative to include objectives):
+  - The objectives were already generated and shown to the user in the previous message.
+  - Take the previously generated 10 objectives from the conversation context.
+  - Set updates: { "businessObjectives": "<all 10 points as one string with \\n between each>" }
+  - nextStep: "other_points"
+  - suggestedOptions: []
+  - Message: "Business objectives noted! Are there any other special terms or conditions to add? (Type 'None' if not)"
+
+CASE 2 — IF user's input is "no", "No", "reject" (user wants to write their own):
+  - Ask: "Please type your own business objectives for the LLP."
+  - updates: {}, nextStep: "business_objectives"
+
+CASE 3 — IF user's input is a description of business activity (a sentence describing what the LLP does, NOT yes/no):
+  - Generate EXACTLY 10 clear, professional, legally appropriate business objective points based on their description.
+  - Format as a numbered list in message.
+  - End with: "Would you like to include these objectives in the agreement?"
+  - updates: {}, nextStep: "business_objectives"
+  - suggestedOptions: ["Yes, include these", "No, I'll write my own"]
+
+CASE 4 — IF user's input is empty or unrelated:
+  - Ask: "Briefly describe the main business activity of your LLP."
+  - updates: {}, nextStep: "business_objectives", suggestedOptions: []`,
 
     other_points: `
-## STEP: Other Points / Special Clauses
-Ask: "Are there any other special terms or conditions you'd like to add to the agreement? (Type 'None' if not)"
-Map user input to: "otherPoints": "<their input or empty string>"
-nextStep: "governance"`,
+## STEP: Other Special Points
+USER input: "${userMsg}"
+IF user's input is "None", "none", "no", or empty — or they have answered with any text:
+  - Set updates: { "otherPoints": "${userMsg.toLowerCase() === "none" || userMsg.toLowerCase() === "no" ? "" : userMsg}" }
+  - nextStep: "governance"
+  - Message: "Got it! Now, for the LLP bank account, who should be authorized to operate it?"
+  - suggestedOptions: ["Single (any one partner)", "Any Two partners", "All partners"]
+ELSE first time / no answer yet:
+  - Ask: "Are there any other special terms or conditions to add to the agreement? (Type 'None' if not)"
+  - updates: {}, nextStep: "other_points"`,
 
     governance: `
 ## STEP: Bank Authority
-Ask: "For operating the LLP bank account, who should be authorized to sign?"
-Options: "Single (any one partner)", "Any Two partners", "All partners"
-Map to: "bankAuthority": "Single" | "Any Two" | "All"
-nextStep: "remuneration"`,
+USER input: "${userMsg}"
+IF user's input mentions "single", "one", "any one":
+  - updates: { "bankAuthority": "Single" }, nextStep: "remuneration"
+  - Message: "Bank authority set to Single. Will the designated partners receive any remuneration?"
+  - suggestedOptions: ["Fixed Amount", "Percentage of Profit", "None"]
+ELSE IF user's input mentions "two", "any two", "2":
+  - updates: { "bankAuthority": "Any Two" }, nextStep: "remuneration"
+  - suggestedOptions: ["Fixed Amount", "Percentage of Profit", "None"]
+ELSE IF user's input mentions "all":
+  - updates: { "bankAuthority": "All" }, nextStep: "remuneration"
+  - suggestedOptions: ["Fixed Amount", "Percentage of Profit", "None"]
+ELSE:
+  - Ask: "For the LLP bank account, who should be authorized to operate it?"
+  - suggestedOptions: ["Single (any one partner)", "Any Two partners", "All partners"]
+  - updates: {}, nextStep: "governance"`,
 
     remuneration: `
-## STEP: Remuneration to Partners
-Ask: "Will designated partners receive remuneration?"
-Options: "Fixed Amount", "Percentage of Profit", "None"
-Map to: "remunerationType": "Fixed" | "Percentage" | "None"
-If Fixed or Percentage, also ask for the value and set "remunerationValue": "<value>"
-nextStep: "loans"`,
+## STEP: Remuneration
+USER input: "${userMsg}"
+IF user says "fixed" or "fixed amount":
+  - Set updates: { "remunerationType": "Fixed" }
+  - Ask for the fixed amount value
+  - nextStep: "remuneration" until they give the value
+  - When value given: also set "remunerationValue": "<amount>", nextStep: "loans"
+ELSE IF user says "percentage":
+  - Set updates: { "remunerationType": "Percentage" }
+  - Ask for the % value
+  - When given: "remunerationValue": "<value>%", nextStep: "loans"
+ELSE IF user says "none", "no", "None":
+  - updates: { "remunerationType": "None", "remunerationValue": "" }, nextStep: "loans"
+  - Ask: "Will partners be allowed to give loans to the LLP?"
+  - suggestedOptions: ["Yes", "No"]
+ELSE:
+  - Ask: "Will the designated partners receive remuneration?"
+  - suggestedOptions: ["Fixed Amount", "Percentage of Profit", "None"]
+  - updates: {}, nextStep: "remuneration"`,
 
     loans: `
-## STEP: Loans from Partners
-Ask: "Will partners be allowed to give loans to the LLP?"
-Options: "Yes", "No"
-If Yes, ask for interest rate and set "loansEnabled": true, "loanInterestRate": <rate>
-If No: "loansEnabled": false
-nextStep: "arbitration"`,
+## STEP: Partner Loans
+USER input: "${userMsg}"
+IF user says "yes":
+  - Ask for interest rate
+  - When rate given: updates: { "loansEnabled": true, "loanInterestRate": <rate> }, nextStep: "arbitration"
+ELSE IF user says "no":
+  - updates: { "loansEnabled": false }, nextStep: "arbitration"
+  - Message: "Got it. In which city will disputes be resolved through arbitration?"
+ELSE:
+  - Ask: "Will partners be allowed to give loans to the LLP?"
+  - suggestedOptions: ["Yes", "No"]
+  - updates: {}, nextStep: "loans"`,
 
     arbitration: `
 ## STEP: Arbitration City
