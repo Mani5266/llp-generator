@@ -64,9 +64,36 @@ export function buildPrompt(userMsg: string, data: Partial<LLPData>, step: strin
   const targetPartner = targetIdx >= 0 ? partners[targetIdx] : null;
   const nextPartner = targetIdx >= 0 ? partners[targetIdx + 1] : null;
   const allAddressesConfirmed = allExtracted && partners.every(p => p.address?.pin);
+  const designatedConfirmed = partners.some(p => p.isDesignatedPartner);
 
   let addressSection = "";
-  if (allExtracted && !allAddressesConfirmed && targetPartner) {
+  if (step === "designated_partners") {
+    // Step: Ask who is a designated partner using checkboxes
+    const partnerNames = partners.map(p => `${p.salutation || ""} ${p.fullName}`.trim()).filter(Boolean);
+    addressSection = `
+## CURRENT TASK: Designated Partners
+Ask the user to select who among the partners will be designated partners.
+Use suggestedCheckboxes with the list of partner names.
+After user selects, set "partners[X].isDesignatedPartner" = true for selected ones, false for others.
+Also set "partners[X].isManagingPartner" = true for the first selected designated partner.
+Minimum 2 designated partners required.
+After confirming, set nextStep = "llp_name".
+
+PARTNER NAMES FOR CHECKBOXES: ${JSON.stringify(partnerNames)}
+
+Example response:
+{
+  "message": "Great! Now, who among the partners will be the Designated Partners? (Select at least 2)",
+  "updates": {},
+  "nextStep": "designated_partners",
+  "suggestedCheckboxes": ${JSON.stringify(partnerNames)},
+  "suggestedOptions": [],
+  "isComplete": false,
+  "validationError": null
+}
+
+If user is SUBMITTING their checkbox selection (their message includes partner names), map them to partners[X].isDesignatedPartner.`;
+  } else if (allExtracted && !allAddressesConfirmed && targetPartner) {
     addressSection = `
 ## CURRENT TASK: Confirm Partner ${targetIdx + 1}'s address
 Partner name: ${targetPartner.fullName}
@@ -80,8 +107,8 @@ IF user says "Yes" or any affirmative:
   "partners[${targetIdx}].address.district": "<district>",
   "partners[${targetIdx}].address.state": "<state>",
   "partners[${targetIdx}].address.pin": "<6-digit pin>"
-- Then ask about Partner ${targetIdx + 2}${nextPartner ? ` (${nextPartner.fullName}): "${nextPartner.aadhaarAddress}"` : " — all done, set nextStep to partner_summary"}.
-- nextStep: ${nextPartner ? '"partner_X"' : '"partner_summary"'}
+- Then ${nextPartner ? `ask about Partner ${targetIdx + 2} (${nextPartner.fullName}): "${nextPartner.aadhaarAddress}"` : "ALL ADDRESSES ARE DONE — set nextStep to 'designated_partners' and ask who the designated partners are"}.
+- nextStep: ${nextPartner ? '"partner_X"' : '"designated_partners"'}
 - suggestedOptions: ${nextPartner ? '["Yes: Correct", "No: I\'ll type it"]' : '[]'}
 
 IF user says "No":
@@ -90,10 +117,14 @@ IF user says "No":
 - nextStep: "${step}"
 
 IF user typed a custom address:
-- Parse their typed text into the same address fields above
-- Then ${nextPartner ? `ask about Partner ${targetIdx + 2}'s address` : "set nextStep to partner_summary"}`;
-  } else if (allAddressesConfirmed) {
-    addressSection = `All partner addresses are confirmed. Continue to the next step.`;
+- Parse their text into the same address fields above
+- Then ${nextPartner ? `ask about Partner ${targetIdx + 2}` : "set nextStep to 'designated_partners'"}.`;
+  } else if (allAddressesConfirmed && !designatedConfirmed) {
+    addressSection = `
+## CURRENT TASK: Ask Designated Partners
+All addresses confirmed. Now ask who the designated partners are.
+Set nextStep = "designated_partners".
+Use suggestedCheckboxes with all partner names.`;
   } else {
     addressSection = `Partners not extracted yet. Ask the user to attach all ${numPartners} Aadhaar cards using the 📎 button.`;
   }
