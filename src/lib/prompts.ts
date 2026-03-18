@@ -1,4 +1,4 @@
-import { LLPData } from "@/types";
+import { LLPData, Partner } from "@/types";
 
 export interface AIReply {
   message: string;
@@ -11,151 +11,116 @@ export interface AIReply {
 }
 
 /**
- * Dedicated prompt for Aadhaar extraction — called only when files are attached.
- * Returns a structured JSON with ALL partner details extracted at once.
+ * Dedicated prompt for Aadhaar extraction — called ONLY when files are attached.
  */
 export function buildExtractionPrompt(data: Partial<LLPData>, numFiles: number): string {
   const numPartners = data.numPartners || 2;
-  const partners = data.partners || [];
 
-  // Build a fully filled-out example for EVERY partner, no ellipsis
-  const exampleUpdates: Record<string, unknown> = {};
+  // Generate a complete example with ALL partners filled in
+  const exampleUpdates: Record<string, string | number> = {};
   for (let i = 0; i < numPartners; i++) {
-    exampleUpdates[`partners[${i}].fullName`] = `Full Name of Person ${i + 1} from Aadhaar`;
-    exampleUpdates[`partners[${i}].fatherName`] = `Father Name of Person ${i + 1} from Aadhaar`;
+    exampleUpdates[`partners[${i}].fullName`] = `Full Name ${i + 1}`;
+    exampleUpdates[`partners[${i}].fatherName`] = `Father Name ${i + 1}`;
     exampleUpdates[`partners[${i}].age`] = 30 + i;
-    exampleUpdates[`partners[${i}].aadhaarAddress`] = `Complete raw address string exactly as printed on Aadhaar card ${i + 1}`;
+    exampleUpdates[`partners[${i}].aadhaarAddress`] = `Full raw address as on Aadhaar card ${i + 1}`;
   }
-  const p0Name = partners[0]?.fullName || "Person 1 Full Name";
-  const p0Addr = partners[0]?.aadhaarAddress || "their Aadhaar address";
 
-  const exampleJson = JSON.stringify({
-    message: `I've extracted and mapped details for all ${numPartners} partners to the live document. Starting with Partner 1 (${p0Name}), is this their residential address? [${p0Addr}]`,
-    updates: exampleUpdates,
-    nextStep: "partner_X",
-    suggestedOptions: ["Yes: Correct", "No: I'll type it"],
-    isComplete: false,
-    validationError: null,
-  }, null, 2);
+  return `You are a data extraction assistant. ${numFiles} Aadhaar card image(s) have been attached.
 
-  return `You are a data extraction assistant. Extract identity details from the ${numFiles} Aadhaar card image(s) provided.
+TASK: Extract the following for each Aadhaar card in order:
+1. Full Name (exactly as printed)
+2. Father/Mother/Spouse Name (from S/O, D/O, W/O — name only, no title)
+3. Age in years (integer: 2026 - birth year from DOB)
+4. Full address (one string, copied exactly from the card)
 
-TASK: Extract the following for EVERY person in EVERY Aadhaar card:
-- Full Name (as printed, no salutation)
-- Father's Name (from "S/O", "D/O", or "W/O" field, name only, no salutation)
-- Age (calculate as integer: current year 2026 minus birth year from DOB)
-- Full Address (copy the COMPLETE address exactly as printed, as a single string)
+Map card 1 -> partners[0], card 2 -> partners[1], card 3 -> partners[2], etc.
 
-The ${numFiles} Aadhaar card(s) correspond to partners [0] through [${numFiles - 1}] IN ORDER (first card = partners[0], second card = partners[1], etc.)
+IMPORTANT:
+- You MUST include ALL ${numFiles} partners in the updates object.
+- Do NOT parse the address — copy it as-is into aadhaarAddress.
+- Return ONLY valid JSON (no markdown, no fences).
 
-CRITICAL REQUIREMENTS:
-- You MUST include all ${numFiles} partners in your "updates" object.
-- Do NOT leave any partner out.
-- Do NOT parse addresses into separate fields yet — just copy the full raw address string into "partners[X].aadhaarAddress".
-- Return ONLY valid JSON matching the format below. No markdown, no code fences.
-
-REQUIRED OUTPUT FORMAT (copy this structure exactly, fill in real extracted values):
-${exampleJson}`;
+Return this exact structure with real values:
+${JSON.stringify({
+  message: `I've extracted details for all ${numFiles} partners and mapped them to the document. Starting with Partner 1 ([name]), is this their residential address? [raw address]`,
+  updates: exampleUpdates,
+  nextStep: "partner_X",
+  suggestedOptions: ["Yes: Correct", "No: I'll type it"],
+  isComplete: false,
+  validationError: null,
+}, null, 2)}`;
 }
 
 /**
- * Builds the main conversational AI prompt for all non-extraction steps.
+ * Conversational prompt for all non-file steps.
  */
 export function buildPrompt(userMsg: string, data: Partial<LLPData>, step: string): string {
-  const partners = data.partners || [];
+  const partners: Partner[] = (data.partners || []) as Partner[];
   const numPartners = data.numPartners || partners.length || 2;
 
-  // Find next partner needing address confirmation (no pin set yet)
-  const nextIdx = partners.findIndex(p => !p.address?.pin);
-  const targetIdx = nextIdx !== -1 ? nextIdx : partners.length;
-  const targetPartner = partners[targetIdx];
-  const nextPartner = partners[targetIdx + 1];
   const allExtracted = partners.length > 0 && partners.every(p => p.fullName);
-  const allAddressesConfirmed = partners.every(p => p.address?.pin);
+  const nextIdx = allExtracted ? partners.findIndex(p => !p.address?.pin) : -1;
+  const targetIdx = nextIdx !== -1 ? nextIdx : -1;
+  const targetPartner = targetIdx >= 0 ? partners[targetIdx] : null;
+  const nextPartner = targetIdx >= 0 ? partners[targetIdx + 1] : null;
+  const allAddressesConfirmed = allExtracted && partners.every(p => p.address?.pin);
 
-  const partnerSummary = partners.map((p, i) =>
-    `Partner ${i + 1}: name="${p.fullName || "?"}", address_confirmed=${!!p.address?.pin}, aadhaarAddress="${p.aadhaarAddress || "?"}"`
-  ).join("\n");
+  let addressSection = "";
+  if (allExtracted && !allAddressesConfirmed && targetPartner) {
+    addressSection = `
+## CURRENT TASK: Confirm Partner ${targetIdx + 1}'s address
+Partner name: ${targetPartner.fullName}
+Raw Aadhaar address: "${targetPartner.aadhaarAddress}"
 
-  // Build a concrete JSON example for the YES case
-  const yesExample = targetPartner ? JSON.stringify({
-    message: nextPartner
-      ? `Partner ${targetIdx + 1}'s address confirmed. Is Partner ${targetIdx + 2}'s (${nextPartner.fullName}) address correct? [${nextPartner.aadhaarAddress}]`
-      : `All addresses confirmed! Let's continue to the next step.`,
-    updates: {
-      [`partners[${targetIdx}].address.doorNo`]: "<extract doorNo from aadhaarAddress>",
-      [`partners[${targetIdx}].address.area`]: "<extract area/street from aadhaarAddress>",
-      [`partners[${targetIdx}].address.city`]: "<extract city/village from aadhaarAddress>",
-      [`partners[${targetIdx}].address.district`]: "<extract district from aadhaarAddress>",
-      [`partners[${targetIdx}].address.state`]: "<extract state from aadhaarAddress>",
-      [`partners[${targetIdx}].address.pin`]: "<extract 6-digit PIN from aadhaarAddress>",
-    },
-    nextStep: nextPartner ? "partner_X" : "partner_summary",
-    suggestedOptions: nextPartner ? ["Yes: Correct", "No: I'll type it"] : [],
-    isComplete: false,
-    validationError: null,
-  }, null, 2) : "{}";
+IF user says "Yes" or any affirmative:
+- Parse the raw address above into fields and return them in "updates":
+  "partners[${targetIdx}].address.doorNo": "<door number>",
+  "partners[${targetIdx}].address.area": "<area/street>",
+  "partners[${targetIdx}].address.city": "<city/town/village>",
+  "partners[${targetIdx}].address.district": "<district>",
+  "partners[${targetIdx}].address.state": "<state>",
+  "partners[${targetIdx}].address.pin": "<6-digit pin>"
+- Then ask about Partner ${targetIdx + 2}${nextPartner ? ` (${nextPartner.fullName}): "${nextPartner.aadhaarAddress}"` : " — all done, set nextStep to partner_summary"}.
+- nextStep: ${nextPartner ? '"partner_X"' : '"partner_summary"'}
+- suggestedOptions: ${nextPartner ? '["Yes: Correct", "No: I\'ll type it"]' : '[]'}
 
-  const noExample = targetPartner ? JSON.stringify({
-    message: `Please type the correct residential address for Partner ${targetIdx + 1} (${targetPartner.fullName}):`,
-    updates: {},
-    nextStep: step,
-    suggestedOptions: [],
-    isComplete: false,
-    validationError: null,
-  }, null, 2) : "{}";
+IF user says "No":
+- Ask them to type the correct address for Partner ${targetIdx + 1}
+- updates: {}
+- nextStep: "${step}"
 
-  return `You are "Deed AI Assistant" — a strict conversational LLP Agreement assistant.
-Return ONLY structured JSON. No markdown, no fences.
+IF user typed a custom address:
+- Parse their typed text into the same address fields above
+- Then ${nextPartner ? `ask about Partner ${targetIdx + 2}'s address` : "set nextStep to partner_summary"}`;
+  } else if (allAddressesConfirmed) {
+    addressSection = `All partner addresses are confirmed. Continue to the next step.`;
+  } else {
+    addressSection = `Partners not extracted yet. Ask the user to attach all ${numPartners} Aadhaar cards using the 📎 button.`;
+  }
 
-CURRENT STEP: ${step}
+  const partnerList = partners.map((p, i) =>
+    `P${i + 1}: name="${p.fullName || "?"}", addr_confirmed=${!!p.address?.pin}, aadhaarAddress="${p.aadhaarAddress || "?"}"`
+  ).join(" | ");
+
+  return `You are "Deed AI Assistant" — a conversational LLP Agreement assistant.
+Return ONLY valid JSON. No markdown, no code fences.
+
+STEP: ${step}
 USER: "${userMsg}"
 NUM_PARTNERS: ${numPartners}
-ALL_EXTRACTED: ${allExtracted}
-ALL_ADDRESSES_CONFIRMED: ${allAddressesConfirmed}
-PARTNER SUMMARY:
-${partnerSummary}
-SESSION_DATA: ${JSON.stringify(data)}
+PARTNERS: ${partnerList}
+DATA: ${JSON.stringify(data)}
 
----
+RULES:
+1. Never suggest "Upload Now".
+2. If asked who to upload, say: "Please use the 📎 attachment button below to upload all ${numPartners} Aadhaar cards."
+3. DO NOT try to extract images — only confirm/collect data conversationally.
 
-## ABSOLUTE RULES:
-- NEVER suggest "Upload Now".
-- If user hasn't uploaded Aadhaar yet, say: "Please upload all ${numPartners} Aadhaar cards using the 📎 button below."
-- Do NOT extract from files here — files are handled separately.
+${addressSection}
 
----
+For other steps (llp_name, registered_address, contributions, profits, governance, remuneration, loans, arbitration, business_objectives, other_points):
+Continue the normal conversational flow based on the current step and DATA.
 
-## ADDRESS CONFIRMATION (step = "partner_X"):
-${allExtracted && !allAddressesConfirmed ? `
-You are confirming Partner ${targetIdx + 1}'s (${targetPartner?.fullName}) address.
-Their raw Aadhaar address: "${targetPartner?.aadhaarAddress || "not available"}"
-
-⚠️ CRITICAL: You MUST include the parsed address fields in your "updates" object whenever user says "Yes".
-Do NOT skip this. The document cannot show the address unless you emit these fields.
-
-IF user says "Yes" (any affirmative): Return THIS structure (fill in real parsed values from the aadhaarAddress string above):
-${yesExample}
-
-IF user says "No": Return THIS structure:
-${noExample}
-
-IF user typed a custom address (from a previous "No"): Parse their typed address and set the same fields as in the YES example.
-` : allAddressesConfirmed ? `
-All addresses are confirmed. Continue to the next step (partner_summary or llp_name).
-Set nextStep = "partner_summary".
-` : `
-Partners not extracted yet. Ask user to upload Aadhaar cards using the 📎 button.
-`}
-
----
-
-## FOR ALL OTHER STEPS (llp_name, registered_address, contributions, profits, governance, etc.):
-Continue normal conversational flow based on SESSION_DATA and the current step.
-
----
-
-FIELD KEYS: "partners[X].address.doorNo", "partners[X].address.area", "partners[X].address.city", "partners[X].address.district", "partners[X].address.state", "partners[X].address.pin", "llpName", "executionDate", "executionCity", "registeredAddress.doorNo", "registeredAddress.area", "registeredAddress.district", "registeredAddress.state", "registeredAddress.pin", "totalCapital", "contributions[X].percentage", "contributions[X].amount", "profits[X].percentage", "bankAuthority", "remunerationType", "remunerationValue", "loansEnabled", "loanInterestRate", "arbitrationCity", "businessObjectives", "otherPoints"`;
+JSON output must have: message, updates, nextStep, suggestedOptions, isComplete, validationError.
+FIELD KEYS: "llpName", "executionDate", "executionCity", "registeredAddress.doorNo", "registeredAddress.area", "registeredAddress.district", "registeredAddress.state", "registeredAddress.pin", "totalCapital", "contributions[X].percentage", "contributions[X].amount", "profits[X].percentage", "bankAuthority", "remunerationType", "remunerationValue", "loansEnabled", "loanInterestRate", "arbitrationCity", "businessObjectives", "otherPoints"`;
 }
-
-
