@@ -164,56 +164,75 @@ Use suggestedCheckboxes with all partner names.`;
   const stepSections: Record<string, string> = {
     llp_name: `
 ## STEP: LLP Name
-Ask: "What will be the name of your LLP? (It must end with 'LLP')"
-Validate: must end with 'LLP'.
-On valid input, set: "llpName": "<name>"
-nextStep: "registered_address"`,
+USER input: "${userMsg}"
+IF the user's input IS the LLP name (contains text ending with "LLP" or "llp"):
+  - Set updates: { "llpName": "${userMsg}" }
+  - Set nextStep: "registered_address"
+  - Message: "Great! '${userMsg}' has been registered. Now, what is the registered office address of the LLP?"
+ELSE (user hasn't answered yet):
+  - Ask: "What will be the name of your LLP? (Must end with 'LLP')"
+  - updates: {}, nextStep: "llp_name"`,
 
     registered_address: `
-## STEP: Registered Address of LLP
-Ask: "What is the registered office address of the LLP?"
-Collect: doorNo, area, district, state, pin code.
-Map to:
-  "registeredAddress.doorNo": "...",
-  "registeredAddress.area": "...",
-  "registeredAddress.district": "...",
-  "registeredAddress.state": "...",
-  "registeredAddress.pin": "..."
-IMPORTANT: Also set "executionCity" = same value as registeredAddress.district (this fills the [Place] field in the document).
-nextStep: "total_capital"`,
+## STEP: Registered Address
+USER input: "${userMsg}"
+IF the user's input looks like an address (contains numbers, area, or city name):
+  - Parse the address into: doorNo, area, district, state, pin
+  - Set ALL of these in updates:
+    "registeredAddress.doorNo": "...",
+    "registeredAddress.area": "...",
+    "registeredAddress.district": "...",
+    "registeredAddress.state": "...",
+    "registeredAddress.pin": "...",
+    "executionCity": "<same as district>" ← CRITICAL: sets the [Place] field
+  - nextStep: "total_capital"
+ELSE:
+  - Ask: "What is the registered office address of the LLP? Please provide door no, area, district, state and PIN."
+  - updates: {}, nextStep: "registered_address"`,
 
     total_capital: `
 ## STEP: Total Capital Contribution
-Ask: "What is the total capital contribution of the LLP? (in Rupees, must be greater than 0)"
-Validate: must be a positive number.
-On valid input: "totalCapital": <number>
-nextStep: "contributions"`,
+USER input: "${userMsg}"
+IF the user's input contains a number (the capital amount in Rupees):
+  - Extract the number from input
+  - Validate it is > 0
+  - Set updates: { "totalCapital": <number> }
+  - nextStep: "contributions"
+  - Message: "Capital set to ₹<amount>. Now, what is the contribution percentage for each partner? (must total 100%)\n${partners.map((p) => `- ${p.fullName}`).join("\n")}"
+ELSE:
+  - Ask: "What is the total capital contribution of the LLP in Rupees? (must be greater than 0)"
+  - updates: {}, nextStep: "total_capital"`,
 
     contributions: `
 ## STEP: Partner Capital Shares
 Current total capital: ₹${totalCapital.toLocaleString("en-IN")}
-Current contributions: ${JSON.stringify(contributions)}
+Partners: ${partners.map((p, i) => `${i + 1}. ${p.fullName}`).join(", ")}
+USER input: "${userMsg}"
 
-Ask: "What is the capital contribution percentage for each partner?"
-Show each partner name and ask for their share (user types percentages like "50, 30, 20").
-Rules:
-- All percentages must sum to EXACTLY 100%.
-- Calculate amount for each: amount = (percentage / 100) * ${totalCapital}
-- Map to:
-${partnerContribExample}
-- If sum ≠ 100, set validationError and ask again.
-nextStep: "profits"`,
+IF the user's input contains percentages (numbers that could be partner shares):
+  - Parse the ${numPartners} percentages from input (e.g., "50 30 20" or "50%, 30%, 20%")
+  - Validate they sum to exactly 100. If not, set validationError.
+  - For each partner i, set:
+    "contributions[i].percentage": <parsed %>,
+    "contributions[i].amount": Math.round((<parsed %> / 100) * ${totalCapital})
+  - nextStep: "profits"
+ELSE:
+  - Ask: "What is the capital contribution percentage for each partner? (must total 100%)\n${partners.map((p, i) => `- Partner ${i + 1} (${p.fullName}): ?%`).join("\n")}"
+  - updates: {}, nextStep: "contributions"`,
 
     profits: `
 ## STEP: Profit & Loss Sharing
-Ask: "How will profits and losses be shared among the partners? (percentages must total 100%)"
-Show each partner name and ask for their profit share.
-Rules:
-- All percentages must sum to EXACTLY 100%.
-- Map to:
-${partnerProfitExample}
-- If sum ≠ 100, set validationError and ask again.
-nextStep: "business_objectives"`,
+Partners: ${partners.map((p, i) => `${i + 1}. ${p.fullName}`).join(", ")}
+USER input: "${userMsg}"
+
+IF the user's input contains percentages for profit sharing:
+  - Parse the ${numPartners} percentages from input
+  - Validate they sum to exactly 100. If not, set validationError.
+  - For each partner i, set: "profits[i].percentage": <parsed %>
+  - nextStep: "business_objectives"
+ELSE:
+  - Ask: "How will profits and losses be shared among the partners? (must total 100%)\n${partners.map((p, i) => `- Partner ${i + 1} (${p.fullName}): ?%`).join("\n")}"
+  - updates: {}, nextStep: "profits"`,
 
     business_objectives: `
 ## STEP: Business Objectives
