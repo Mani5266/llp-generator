@@ -147,8 +147,124 @@ Use suggestedCheckboxes with all partner names.`;
     addressSection = `Partners not extracted yet. Ask the user to attach all ${numPartners} Aadhaar cards using the 📎 button.`;
   }
 
+  // ── Step-specific logic for post-confirmation steps ──────────────────────────
+
+  const totalCapital = (data as LLPData).totalCapital || 0;
+  const contributions = (data as LLPData).contributions || [];
+  const profits = (data as LLPData).profits || [];
+
+  const partnerContribExample = partners.map((p, i) =>
+    `  "contributions[${i}].percentage": <share% for ${p.fullName}>,\n  "contributions[${i}].amount": <calculated: share%/100 * totalCapital>`
+  ).join("\n");
+
+  const partnerProfitExample = partners.map((p, i) =>
+    `  "profits[${i}].percentage": <profit% for ${p.fullName}>`
+  ).join("\n");
+
+  const stepSections: Record<string, string> = {
+    llp_name: `
+## STEP: LLP Name
+Ask: "What will be the name of your LLP? (It must end with 'LLP')"
+Validate: must end with 'LLP'.
+On valid input, set: "llpName": "<name>"
+nextStep: "registered_address"`,
+
+    registered_address: `
+## STEP: Registered Address of LLP
+Ask: "What is the registered office address of the LLP?"
+Collect: doorNo, area, district, state, pin code.
+Map to:
+  "registeredAddress.doorNo": "...",
+  "registeredAddress.area": "...",
+  "registeredAddress.district": "...",
+  "registeredAddress.state": "...",
+  "registeredAddress.pin": "..."
+IMPORTANT: Also set "executionCity" = same value as registeredAddress.district (this fills the [Place] field in the document).
+nextStep: "total_capital"`,
+
+    total_capital: `
+## STEP: Total Capital Contribution
+Ask: "What is the total capital contribution of the LLP? (in Rupees, must be greater than 0)"
+Validate: must be a positive number.
+On valid input: "totalCapital": <number>
+nextStep: "contributions"`,
+
+    contributions: `
+## STEP: Partner Capital Shares
+Current total capital: ₹${totalCapital.toLocaleString("en-IN")}
+Current contributions: ${JSON.stringify(contributions)}
+
+Ask: "What is the capital contribution percentage for each partner?"
+Show each partner name and ask for their share (user types percentages like "50, 30, 20").
+Rules:
+- All percentages must sum to EXACTLY 100%.
+- Calculate amount for each: amount = (percentage / 100) * ${totalCapital}
+- Map to:
+${partnerContribExample}
+- If sum ≠ 100, set validationError and ask again.
+nextStep: "profits"`,
+
+    profits: `
+## STEP: Profit & Loss Sharing
+Ask: "How will profits and losses be shared among the partners? (percentages must total 100%)"
+Show each partner name and ask for their profit share.
+Rules:
+- All percentages must sum to EXACTLY 100%.
+- Map to:
+${partnerProfitExample}
+- If sum ≠ 100, set validationError and ask again.
+nextStep: "business_objectives"`,
+
+    business_objectives: `
+## STEP: Business Objectives
+Ask: "Briefly describe the main business activity of your LLP."
+When user provides a description, generate EXACTLY 10 clear, professional business objective points based on their input.
+Format them as a numbered list in the message.
+Ask: "Would you like to include these objectives in the agreement?"
+If Yes: Set "businessObjectives": "<all 10 points as a single formatted string with newlines>"
+nextStep: "other_points"
+If No: Ask them to type their own objectives directly.`,
+
+    other_points: `
+## STEP: Other Points / Special Clauses
+Ask: "Are there any other special terms or conditions you'd like to add to the agreement? (Type 'None' if not)"
+Map user input to: "otherPoints": "<their input or empty string>"
+nextStep: "governance"`,
+
+    governance: `
+## STEP: Bank Authority
+Ask: "For operating the LLP bank account, who should be authorized to sign?"
+Options: "Single (any one partner)", "Any Two partners", "All partners"
+Map to: "bankAuthority": "Single" | "Any Two" | "All"
+nextStep: "remuneration"`,
+
+    remuneration: `
+## STEP: Remuneration to Partners
+Ask: "Will designated partners receive remuneration?"
+Options: "Fixed Amount", "Percentage of Profit", "None"
+Map to: "remunerationType": "Fixed" | "Percentage" | "None"
+If Fixed or Percentage, also ask for the value and set "remunerationValue": "<value>"
+nextStep: "loans"`,
+
+    loans: `
+## STEP: Loans from Partners
+Ask: "Will partners be allowed to give loans to the LLP?"
+Options: "Yes", "No"
+If Yes, ask for interest rate and set "loansEnabled": true, "loanInterestRate": <rate>
+If No: "loansEnabled": false
+nextStep: "arbitration"`,
+
+    arbitration: `
+## STEP: Arbitration City
+Ask: "In which city will disputes be resolved through arbitration?"
+Map to: "arbitrationCity": "<city>"
+nextStep: "partner_summary"`,
+  };
+
+  const stepInstruction = stepSections[step] || `Continue the normal conversational flow for step "${step}" based on DATA.`;
+
   const partnerList = partners.map((p, i) =>
-    `P${i + 1}: name="${p.fullName || "?"}", addr_confirmed=${!!p.address?.pin}, aadhaarAddress="${p.aadhaarAddress || "?"}"`
+    `P${i + 1}: name="${p.fullName || "?"}", addr_confirmed=${!!p.address?.pin}`
   ).join(" | ");
 
   return `You are "Deed AI Assistant" — a conversational LLP Agreement assistant.
@@ -160,16 +276,13 @@ NUM_PARTNERS: ${numPartners}
 PARTNERS: ${partnerList}
 DATA: ${JSON.stringify(data)}
 
-RULES:
+GLOBAL RULES:
 1. Never suggest "Upload Now".
-2. If asked who to upload, say: "Please use the 📎 attachment button below to upload all ${numPartners} Aadhaar cards."
-3. DO NOT try to extract images — only confirm/collect data conversationally.
+2. Never go back to a previous step.
+3. Follow the STEP INSTRUCTION below exactly.
 
-${addressSection}
+${step === "partner_X" || step === "designated_partners" ? addressSection : stepInstruction}
 
-For other steps (llp_name, registered_address, contributions, profits, governance, remuneration, loans, arbitration, business_objectives, other_points):
-Continue the normal conversational flow based on the current step and DATA.
-
-JSON output must have: message, updates, nextStep, suggestedOptions, isComplete, validationError.
-FIELD KEYS: "llpName", "executionDate", "executionCity", "registeredAddress.doorNo", "registeredAddress.area", "registeredAddress.district", "registeredAddress.state", "registeredAddress.pin", "totalCapital", "contributions[X].percentage", "contributions[X].amount", "profits[X].percentage", "bankAuthority", "remunerationType", "remunerationValue", "loansEnabled", "loanInterestRate", "arbitrationCity", "businessObjectives", "otherPoints"`;
+JSON output must always have all these fields:
+{ "message": "...", "updates": {}, "nextStep": "...", "suggestedOptions": [], "suggestedCheckboxes": [], "isComplete": false, "validationError": null }`;
 }
