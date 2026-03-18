@@ -72,12 +72,13 @@ export function ordinalParty(i: number) {
   return (["First","Second","Third","Fourth","Fifth","Sixth","Seventh","Eighth","Ninth","Tenth"][i]??`${i+1}th`)+" Party";
 }
 export function fmtPartnerAddr(a: PartnerAddress) {
-  const pin = (a.pin || "").trim();
-  if (!pin) return ""; 
   const parts = [a.doorNo, a.area, a.city, a.district, a.state]
     .map(s => (s || "").trim())
     .filter(s => s && s.toLowerCase() !== "india");
-  return [...parts, "India - " + pin].join(", ");
+  const pin = (a.pin || "").trim();
+  if (pin) parts.push("India - " + pin);
+  else if (parts.length > 0) parts.push("India");
+  return parts.join(", ");
 }
 
 export function fmtRegAddr(a: RegisteredAddress) {

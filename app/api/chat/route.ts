@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { geminiJSON } from "@/lib/gemini";
-import { buildPrompt, AIReply } from "@/lib/prompts";
+import { buildPrompt, buildExtractionPrompt, AIReply } from "@/lib/prompts";
 import { LLPData } from "@/types";
 import { validateUpdates } from "@/lib/validation";
 
@@ -12,15 +12,23 @@ export async function POST(req: NextRequest) {
       step: string; 
       files?: Array<{ base64: string; mimeType: string }>;
     };
-    if (files && files.length > 0) console.log(`[API] Processing ${files.length} files...`);
-    const result = await geminiJSON<AIReply>(buildPrompt(message, data, step, files?.length ?? 0), files);
+
+    const hasFiles = files && files.length > 0;
+
+    // Use dedicated extraction prompt when Aadhaar files are attached
+    const prompt = hasFiles
+      ? buildExtractionPrompt(data, files.length)
+      : buildPrompt(message, data, step);
+
+    if (hasFiles) console.log(`[API] Extraction prompt — processing ${files.length} file(s)...`);
+    
+    const result = await geminiJSON<AIReply>(prompt, hasFiles ? files : undefined);
     console.log(`[AI Response] nextStep: ${result.nextStep}, updates:`, JSON.stringify(result.updates, null, 2));
 
     // Server-side validation on AI-provided updates
     if (result.updates && Object.keys(result.updates).length > 0) {
       const errors = validateUpdates(result.updates);
       if (errors.length > 0) {
-        // Remove invalid fields from updates and add validation error
         result.validationError = errors.join(" ");
         result.message = `⚠️ ${errors.join(" ")}\n\n${result.message}`;
       }

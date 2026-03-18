@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
     const data: LLPData = await req.json();
     const buf = await buildDocx(data);
     const name = (data.llpName || "draft").replace(/\s+/g, "_");
-    return new NextResponse(buf as unknown as BodyInit, {
+    return new NextResponse(new Uint8Array(buf), {
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "Content-Disposition": `attachment; filename="LLP_Agreement_${name}.docx"`,
