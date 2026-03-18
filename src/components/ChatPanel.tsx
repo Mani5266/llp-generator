@@ -33,14 +33,24 @@ export default function ChatPanel({data,step,done,pct,onUpdates,onStep,onDone,on
     const msg=text.trim(); 
     if((!msg && selectedFiles.length === 0) || busy) return;
     setInput(""); 
+    
+    // INSTANT UPDATE: If msg is a number (2-10), update state immediately for snappy UI
+    const maybeNum = Number(msg);
+    const isCountUpdate = !isNaN(maybeNum) && maybeNum >= 2 && maybeNum <= 10 && selectedFiles.length === 0;
+    if (isCountUpdate) {
+      onUpdates({ numPartners: maybeNum });
+    }
+
     const curFiles = [...selectedFiles];
     setSelectedFiles([]);
     const snapshot = { data: JSON.parse(JSON.stringify(data)), step, done };
     push({role:"user",content: curFiles.length > 0 ? `[Attached ${curFiles.length} file(s)] ${msg}` : msg, snapshot}); 
     setBusy(true);
     try {
+      // Use updated data for API payload if count changed
+      const apiData = isCountUpdate ? { ...data, numPartners: maybeNum } : data;
       const payload = {
-        message:msg, data, step,
+        message:msg, data: apiData, step,
         files: curFiles.length > 0 ? curFiles.map(f => ({ base64: f.base64, mimeType: f.mimeType })) : undefined
       };
       const r = await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
