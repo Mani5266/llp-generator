@@ -68,31 +68,39 @@ export function buildPrompt(userMsg: string, data: Partial<LLPData>, step: strin
 
   let addressSection = "";
   if (step === "designated_partners") {
-    // Step: Ask who is a designated partner using checkboxes
+    // Build explicit index → name mapping so the AI knows exactly which index to update
     const partnerNames = partners.map(p => `${p.salutation || ""} ${p.fullName}`.trim()).filter(Boolean);
+    const indexNameMap = partners.map((p, i) =>
+      `  partners[${i}] → "${p.salutation || ""} ${p.fullName}".trim()`
+    ).join("\n");
+
+    // Build an example update showing ALL partners with true/false
+    const exampleUpdates: Record<string, unknown> = {};
+    partners.forEach((_, i) => {
+      exampleUpdates[`partners[${i}].isDesignatedPartner`] = i < 2 ? true : false;
+      exampleUpdates[`partners[${i}].isManagingPartner`] = i === 0 ? true : false;
+    });
+
     addressSection = `
-## CURRENT TASK: Designated Partners
-Ask the user to select who among the partners will be designated partners.
-Use suggestedCheckboxes with the list of partner names.
-After user selects, set "partners[X].isDesignatedPartner" = true for selected ones, false for others.
-Also set "partners[X].isManagingPartner" = true for the first selected designated partner.
-Minimum 2 designated partners required.
-After confirming, set nextStep = "llp_name".
+## CURRENT TASK: Designated Partners Selection
 
-PARTNER NAMES FOR CHECKBOXES: ${JSON.stringify(partnerNames)}
+PARTNER INDEX MAP (use this to set the correct partner):
+${indexNameMap}
 
-Example response:
-{
-  "message": "Great! Now, who among the partners will be the Designated Partners? (Select at least 2)",
-  "updates": {},
-  "nextStep": "designated_partners",
-  "suggestedCheckboxes": ${JSON.stringify(partnerNames)},
-  "suggestedOptions": [],
-  "isComplete": false,
-  "validationError": null
-}
+IF the user has NOT selected yet (first time showing this step):
+- Return this response to show the checkboxes:
+  { "message": "Now, who among the partners will be the Designated Partners? Select at least 2.", "updates": {}, "nextStep": "designated_partners", "suggestedCheckboxes": ${JSON.stringify(partnerNames)}, "suggestedOptions": [], "isComplete": false, "validationError": null }
 
-If user is SUBMITTING their checkbox selection (their message includes partner names), map them to partners[X].isDesignatedPartner.`;
+IF the user HAS submitted a checkbox selection (message contains partner names or "selected"):
+- Look up each partner name in the INDEX MAP above to find their exact index.
+- Set "partners[X].isDesignatedPartner" = true for EACH selected partner.
+- Set "partners[X].isDesignatedPartner" = false for EACH partner NOT selected.
+- Set "partners[X].isManagingPartner" = true for the FIRST designated partner only, false for the rest.
+- Set nextStep = "llp_name" (NOT "partner_X", NOT "partner_summary").
+- Validate: at least 2 must be selected. If less than 2 selected, set validationError and repeat the checkboxes.
+- Example updates structure (replace with actual selected/unselected values):
+${JSON.stringify(exampleUpdates, null, 2)}`;
+
   } else if (allExtracted && !allAddressesConfirmed && targetPartner) {
     const partnerNamesForCheckbox = partners.map(p => `${p.salutation || ""} ${p.fullName}`.trim()).filter(Boolean);
     const isLastPartner = !nextPartner;
