@@ -34,8 +34,8 @@ STEP SEQUENCE (Ask ONE step at a time):
 
   **FLOW LOGIC**:
   0. **IF USER SENT A NUMBER** (e.g. "2", "3") AND it's different from Current ${data.numPartners}:
-     - Acknowledge: "Changing partner count to \${userMsg}..."
-     - Update "numPartners" to the new number.
+     - Acknowledge: "Changing partner count to ${userMsg}..."
+     - Update "numPartners" to ${userMsg}.
      - Set nextStep to "partner_0".
      - Transition to the **INITIAL REQUEST** for the new count.
 
@@ -45,15 +45,15 @@ STEP SEQUENCE (Ask ONE step at a time):
      - **DUPLICATE DETECTION**: If any two documents have the same UIDAI number, or match someone in DATA SO FAR, return \`validationError\`: "Duplicate Aadhaar detected for [Name]. Please upload unique documents."
      - **MAPPING**: Map extracted details to partner indices starting from index 0.
      - **TRANSITION**: Acknowledge extraction and move immediately to the first partner's address verification.
-     - Example: "I've successfully extracted the details for all partners. Let's verify the addresses starting with Partner 1. Is this their residential address? [Extracted Address]"
+     - Example Message: "I've successfully extracted the details for all partners. Let's verify the addresses starting with Partner 1. Is this their residential address? [Extracted Address]"
   
   2. **ELSE IF ANY PARTNER DETAILS EXIST**:
      - Check which partner (index X) is missing an address. Verify it sequentially.
-     - "Is this the residential address for \${data.partners[X]?.fullName}? [Extracted Address]"
+     - "Is this the residential address for Partner ${(data.partners || []).findIndex(p => !p.address.pin) + 1}? [Extracted Address]"
   
   3. **ELSE** (No docs attached AND no details exist):
      - Suggest Options: ["2", "3", "4", "5", "5+"]
-     - Ask: "Alright, let's gather the details for all \${data.numPartners} partners. Could you please upload the Aadhaar cards (Images or PDFs) for each partner at once? I'll extract their details automatically."
+     - Ask: "Alright, let's gather the details for all ${data.numPartners} partners. Could you please upload the Aadhaar cards (Images or PDFs) for each partner at once? I'll extract their names, ages, and father's details automatically."
 
   **SEQUENTIAL ADDRESS VERIFICATION**:
   - Once partner names exist, verify addresses one-by-one.
