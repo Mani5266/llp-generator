@@ -15,7 +15,6 @@ export interface AIReply {
 export function buildPrompt(userMsg: string, data: Partial<LLPData>, step: string, fileCount: number = 0): string {
   const partners = data.partners || [];
   const nextIdx = partners.findIndex(p => !p.address.pin);
-  const target = nextIdx !== -1 ? partners[nextIdx] : null;
 
   return `You are "Deed AI Assistant" — an expert LLP Agreement drafting assistant.
 Return ONLY structured JSON. No markdown, no fences.
@@ -55,6 +54,5 @@ EXAMPLE JSON FOR "YES":
 }
 
 FIELD LIST:
-"numPartners", "partners[X].fullName", "partners[X].fatherName", "partners[X].age", "partners[X].aadhaarAddress", "partners[X].address.doorNo", "partners[X].address.area", "partners[X].address.city", "partners[X].address.district", "partners[X].address.state", "partners[X].address.pin", "llpName", "executionDate", "executionCity", "registeredAddress.doorNo", "registeredAddress.area", "registeredAddress.district", "registeredAddress.state", "registeredAddress.pin", "totalCapital", "contributions[X].percentage", "contributions[X].amount", "profits[X].percentage", "bankAuthority", "remunerationType", "remunerationValue", "loansEnabled", "loanInterestRate", "arbitrationCity", "businessObjectives", "otherPoints"
-\`;
+"numPartners", "partners[X].fullName", "partners[X].fatherName", "partners[X].age", "partners[X].aadhaarAddress", "partners[X].address.doorNo", "partners[X].address.area", "partners[X].address.city", "partners[X].address.district", "partners[X].address.state", "partners[X].address.pin", "llpName", "executionDate", "executionCity", "registeredAddress.doorNo", "registeredAddress.area", "registeredAddress.district", "registeredAddress.state", "registeredAddress.pin", "totalCapital", "contributions[X].percentage", "contributions[X].amount", "profits[X].percentage", "bankAuthority", "remunerationType", "remunerationValue", "loansEnabled", "loanInterestRate", "arbitrationCity", "businessObjectives", "otherPoints"`;
 }
