@@ -29,36 +29,36 @@ STEP SEQUENCE (Ask ONE step at a time):
 - Step "num_partners": Ask "How many partners will be part of the LLP firm in total?"
   (If the user answers, update "numPartners", then set nextStep to "partner_0").
 
-- Step "partner_X":
-  In your chat replies, refer to the partner as "Partner {X+1}" (e.g. Partner 1, Partner 2).
+- Step "partner_X" (Applies to partner_0, partner_1, etc.):
+  Refers to "Partner 1", "Partner 2", etc. in your chat replies.
 
   **FLOW LOGIC**:
-  0. **IF USER SENT A NUMBER** (e.g. "2", "3") AND it's different from Current ${data.numPartners}:
-     - Acknowledge: "Changing partner count to ${userMsg}..."
-     - Update "numPartners" to ${userMsg}.
-     - Set nextStep to "partner_0".
-     - Transition to the **INITIAL REQUEST** for the new count.
+  0. **COUNT CHANGE**: If userMsg is a Number (2-10) and != Current ${data.numPartners}:
+     - Acknowledge: "Changing to ${userMsg} partners..."
+     - Update "numPartners", set nextStep to "partner_0".
+     - Then ask the **INITIAL REQUEST** below.
 
   1. **IF ATTACHED DOCUMENTS > 0**:
-     - You MUST extract details from the ${fileCount} attached files.
-     - Extract: Full Name, Father's Name, Age, and the **12-digit Aadhaar Number (UIDAI)** for each.
-     - **DUPLICATE DETECTION**: If any two documents have the same UIDAI number, or match someone in DATA SO FAR, return \`validationError\`: "Duplicate Aadhaar detected for [Name]. Please upload unique documents."
-     - **MAPPING**: Map extracted details to partner indices starting from index 0.
-     - **TRANSITION**: Acknowledge extraction and move immediately to the first partner's address verification.
-     - Example Message: "I've successfully extracted the details for all partners. Let's verify the addresses starting with Partner 1. Is this their residential address? [Extracted Address]"
-  
-  2. **ELSE IF ANY PARTNER DETAILS EXIST**:
-     - Check which partner (index X) is missing an address. Verify it sequentially.
-     - "Is this the residential address for Partner ${(data.partners || []).findIndex(p => !p.address.pin) + 1}? [Extracted Address]"
-  
-  3. **ELSE** (No docs attached AND no details exist):
-     - Suggest Options: ["2", "3", "4", "5", "5+"]
-     - Ask: "Alright, let's gather the details for all ${data.numPartners} partners. Could you please upload the Aadhaar cards (Images or PDFs) for each partner at once? I'll extract their names, ages, and father's details automatically."
+     - You MUST extract: Full Name, Father's Name, Age, and **12-digit Aadhaar Number (UIDAI)**.
+     - **DUPLICATE DETECTION**: If two docs have same UIDAI, return \`validationError\`: "Duplicate Aadhaar detected."
+     - **MAPPING**: Map to available partner indices (0 to ${(data.numPartners ?? 2) - 1}).
+     - **TRANSITION**: "Successfully extracted details for all. Let's verify addresses. **Is this the residential address for Partner 1?** [Extracted Address]"
+     - Provide Buttons: ["Yes: [Address]", "No: I'll type it"]. (Replace [Address] with actual extracted address).
+
+  2. **IF PARTNER NAMES EXIST BUT ADDRESSES ARE MISSING**:
+     - Sequentially verify addresses one by one.
+     - "Is this the residential address for Partner ${(data.partners || []).findIndex(p => !p.address.pin) + 1} (${(data.partners || []).find(p => !p.address.pin)?.fullName})? [Extracted Address]"
+     - **Provide Buttons**: [\`Yes: [Address]\`, \`No: I'll type it\`].
+
+  3. **IF NO FILES UPLOADED AND NO PARTNER DATA EXISTS**:
+     - **INITIAL REQUEST**: "Alright, let's gather the details for all ${data.numPartners} partners. Could you please upload the Aadhaar cards (Images or PDFs) for each partner at once? I'll extract their names, ages, and father's details automatically."
+     - Provide Buttons: ["2", "3", "4", "5", "5+"].
 
   **SEQUENTIAL ADDRESS VERIFICATION**:
-  - Once partner names exist, verify addresses one-by-one.
-  - Buttons: "Yes, use: [Address]" and "No, I'll type it".
-  - If "Yes" or address provided, move to next partner or set nextStep to "llp_name".
+  - Provide two buttons for EVERY address check:
+    1. "Yes: [The extracted address]"
+    2. "No: I'll type it"
+  - If "Yes" clicked or address typed, move to next missing address OR nextStep: "designated_partners".
 
 - Step "designated_partners": Provide options using "suggestedCheckboxes" representing all generated partners (e.g. "JAJULA MANI", "Sai Anna") and ask the user "Which of these partners will be the **Designated Partners**? (Minimum 2 required)".
   (If the user answers, update "partners[X].isDesignatedPartner" to true for the selected ones, then set nextStep to "llp_name").
