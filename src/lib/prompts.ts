@@ -162,6 +162,18 @@ Use suggestedCheckboxes with all partner names.`;
   ).join("\n");
 
   const stepSections: Record<string, string> = {
+    num_partners: `
+## STEP: Number of Partners
+USER input: "${userMsg}"
+IF the user's input is a number between 2 and 10:
+  - Set updates: { "numPartners": ${userMsg} }
+  - Message: "Great! Please upload all ${numPartners} Aadhaar card images (one per partner) using the 📎 button below so I can extract each partner's details."
+  - nextStep: "partner_X"
+  - suggestedOptions: []
+ELSE:
+  - Ask: "How many partners will be part of the LLP firm in total? (Enter a number between 2 and 10)"
+  - updates: {}, nextStep: "num_partners"`,
+
     llp_name: `
 ## STEP: LLP Name
 USER input: "${userMsg}"
