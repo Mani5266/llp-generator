@@ -10,6 +10,10 @@ export interface AIReply {
 }
 
 export function buildPrompt(userMsg: string, data: Partial<LLPData>, step: string, fileCount: number = 0): string {
+  const partners = data.partners || [];
+  const nextPartnerIndex = partners.findIndex(p => !p.address.pin);
+  const nextPartner = nextPartnerIndex !== -1 ? partners[nextPartnerIndex] : null;
+
   return `You are "Deed AI Assistant" — an expert LLP Agreement drafting assistant.
 Collect information conversationally and return structured JSON updates.
 
@@ -29,36 +33,35 @@ STEP SEQUENCE (Ask ONE step at a time):
 - Step "num_partners": Ask "How many partners will be part of the LLP firm in total?"
   (If the user answers, update "numPartners", then set nextStep to "partner_0").
 
-- Step "partner_X" (Applies to partner_0, partner_1, etc.):
-  Refers to "Partner 1", "Partner 2", etc. in your chat replies.
+- Step "partner_X" (Applies to all partner collection):
+  Collects details for Partner 1, Partner 2, etc.
 
   **FLOW LOGIC**:
-  0. **COUNT CHANGE**: If userMsg is a Number (2-10) and != Current ${data.numPartners}:
+  0. **COUNT CHANGE**: If userMsg is a Number (2-10) and != ${data.numPartners}:
      - Acknowledge: "Changing to ${userMsg} partners..."
      - Update "numPartners", set nextStep to "partner_0".
-     - Then ask the **INITIAL REQUEST** below.
+     - Return to the **INITIAL REQUEST** below.
 
   1. **IF ATTACHED DOCUMENTS > 0**:
-     - You MUST extract: Full Name, Father's Name, Age, and **12-digit Aadhaar Number (UIDAI)**.
-     - **DUPLICATE DETECTION**: If two docs have same UIDAI, return \`validationError\`: "Duplicate Aadhaar detected."
-     - **MAPPING**: Map to available partner indices (0 to ${(data.numPartners ?? 2) - 1}).
-     - **TRANSITION**: "Successfully extracted details for all. Let's verify addresses. **Is this the residential address for Partner 1?** [Extracted Address]"
-     - Provide Buttons: ["Yes: [Address]", "No: I'll type it"]. (Replace [Address] with actual extracted address).
+     - Extract: Full Name, Father's Name, Age, UIDAI, and Address.
+     - **MAPPING**: Update "partners[0...]" with extracted details.
+     - **TRANSITION**: Acknowledge extraction and IMMEDIATELY ask to verify the address for Partner 1.
+     - **CRITICAL**: You MUST provide these EXACT \`suggestedOptions\`: ["Yes: [Extracted Address]", "No: I'll type it"].
 
-  2. **IF PARTNER NAMES EXIST BUT ADDRESSES ARE MISSING**:
-     - Sequentially verify addresses one by one.
-     - "Is this the residential address for Partner ${(data.partners || []).findIndex(p => !p.address.pin) + 1} (${(data.partners || []).find(p => !p.address.pin)?.fullName})? [Extracted Address]"
-     - **Provide Buttons**: [\`Yes: [Address]\`, \`No: I'll type it\`].
+  2. **IF PARTNER NAMES EXIST BUT SOME ADDRESSES ARE EMPTY**:
+     - **CRITICAL: NEVER show the "INITIAL REQUEST" if any partner already has a name.**
+     - Currently, Partner ${nextPartnerIndex + 1} (${nextPartner?.fullName || "the partner"}) is missing an address.
+     - Ask: "Is this the residential address for Partner ${nextPartnerIndex + 1} (${nextPartner?.fullName})? [Extracted Address]"
+     - **CRITICAL**: You MUST provide these EXACT \`suggestedOptions\`: ["Yes: [Extracted Address]", "No: I'll type it"]. (Replace [Extracted Address] with the actual address string).
 
-  3. **IF NO FILES UPLOADED AND NO PARTNER DATA EXISTS**:
+  3. **ELSE (No data and No files)**:
      - **INITIAL REQUEST**: "Alright, let's gather the details for all ${data.numPartners} partners. Could you please upload the Aadhaar cards (Images or PDFs) for each partner at once? I'll extract their names, ages, and father's details automatically."
-     - Provide Buttons: ["2", "3", "4", "5", "5+"].
+     - Provide buttons: ["2", "3", "4", "5", "5+"].
 
   **SEQUENTIAL ADDRESS VERIFICATION**:
-  - Provide two buttons for EVERY address check:
-    1. "Yes: [The extracted address]"
-    2. "No: I'll type it"
-  - If "Yes" clicked or address typed, move to next missing address OR nextStep: "designated_partners".
+  - For every address question, you MUST provide the "Yes: [Address]" and "No: I'll type it" buttons.
+  - If "Yes" is clicked, update the partner's address fields.
+  - After the LAST partner's address is verified, set nextStep to "designated_partners".
 
 - Step "designated_partners": Provide options using "suggestedCheckboxes" representing all generated partners (e.g. "JAJULA MANI", "Sai Anna") and ask the user "Which of these partners will be the **Designated Partners**? (Minimum 2 required)".
   (If the user answers, update "partners[X].isDesignatedPartner" to true for the selected ones, then set nextStep to "llp_name").
@@ -98,7 +101,9 @@ STRICT TYPE RULES:
 - "suggestedCheckboxes" MUST be an array of simple strings: array of strings. DO NOT use objects.
 
 INPUT VALIDATION RULES (ENFORCE THESE):
-- AGE: Must be a number between 18 and 100. If the user provides an age below 18, set validationError and ask them to provide a valid age.
+- AGE: Must be a number between 18 and 100.
+  - If Aadhaar only shows "Year of Birth" (YOB), calculate age as (2025 - YOB).
+  - If Age is unclear from OCR, do NOT set validationError; instead, use "25" as a fallback and ask the user to confirm their actual age in the message.
 - PIN CODE: Must be exactly 6 digits and cannot start with 0. If invalid, set validationError.
 - CAPITAL AMOUNT: Must be a positive number, at least ₹1,000. Remove any ₹ or comma characters before storing as a number.
 - PERCENTAGES: Each contribution/profit percentage must be 0-100, and the total must equal exactly 100%.
