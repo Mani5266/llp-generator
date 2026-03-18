@@ -106,8 +106,18 @@ export default function LLPApp() {
         next.contributions = next.contributions.slice(0, n);
         next.profits = next.profits.slice(0, n);
       }
-      if (next.totalCapital>0)
-        next.contributions = next.contributions.map(c=>({...c,amount:Math.round(next.totalCapital*(c.percentage||0)/100)}));
+      if (next.totalCapital > 0) {
+        let runningTotal = 0;
+        next.contributions = next.contributions.map((c, i) => {
+          if (i < next.contributions.length - 1) {
+            const amt = Math.round(next.totalCapital * (c.percentage || 0) / 100);
+            runningTotal += amt;
+            return { ...c, amount: amt };
+          } else {
+            return { ...c, amount: next.totalCapital - runningTotal };
+          }
+        });
+      }
       return next as LLPData;
     });
   },[]);
@@ -136,7 +146,7 @@ export default function LLPApp() {
       <div style={{display: mobileTab === "chat" ? "flex" : "none", flexDirection:"column", height:"100%"}}
            className={typeof window !== "undefined" && window.innerWidth <= 768 ? "" : ""}
            id="chat-section">
-        <ChatPanel data={data} step={step} done={done} pct={getPct(data)}
+        <ChatPanel data={data} step={step} done={done} pct={getPct(data)} sessionId={sessionId}
           onUpdates={applyUpdates} onStep={setStep} onDone={()=>setDone(true)} onRestart={restart}
           onRestore={(d, s, dn) => { setData(d); setStep(s); setDone(dn); }}
           onBackToDashboard={() => router.push("/dashboard")} />

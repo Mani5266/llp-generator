@@ -240,16 +240,20 @@ ${powers}
 </ol>
 <ul>
 <li>The books of accounts of the firm shall be kept at the registered office of the ${LLP} for the reference of all the partners.</li>
-<li>The accounting year of the ${LLP} shall be from 1st April of the year to 31st March of subsequent year. The first accounting year shall be from the date of commencement of this ${LLP} till 31st March of the subsequent year.</li>
-<li>It is expressly agreed that the bank account of the ${LLP} shall be operated by the First party who are engaged in the day-to-day activities of the regular business.</li>
-<li>All disputes between the partners or between the Partner and the ${LLP} arising out of the limited liability partnership agreement which cannot be resolved in terms of this agreement shall be referred for arbitration as per the provisions of the Arbitration and Conciliation Act, 1996 (26 of 1996).</li>
-</ul>
+    <li>The accounting year of the ${LLP} shall be from 1st April of the year to 31st March of subsequent year. The first accounting year shall be from the date of commencement of this ${LLP} till 31st March of the subsequent year.</li>
+    <li>It is expressly agreed that the bank account of the ${LLP} shall be operated by <strong>${ff(data.bankAuthority, "Any Two Partners Jointly")}</strong> who are engaged in the day-to-day activities of the regular business.</li>
+    <li>All disputes between the partners or between the Partner and the ${LLP} arising out of the limited liability partnership agreement which cannot be resolved in terms of this agreement shall be referred for arbitration as per the provisions of the Arbitration and Conciliation Act, 1996 (26 of 1996) and the venue of arbitration shall be <strong>${ff(data.arbitrationCity || data.registeredAddress?.district, "[City]")}</strong>.</li>
+  </ul>
 
 <h3 class="sec">Remuneration</h3>
-<p>LLP may pay remuneration to Designated Partners as mutually decided, subject to Section 40(b) of Income Tax Act.</p>
+<p>${data.remunerationType === "None" 
+  ? "No remuneration shall be paid to any of the partners for their services rendered to the LLP." 
+  : `The ${LLP} shall pay remuneration to ${ff(data.remunerationValue || "the Designated Partners", "the Partners")} as ${data.remunerationType === "Percentage" ? "a percentage of profits" : "a fixed monthly amount"}, subject to the limits specified under Section 40(b) of the Income Tax Act.`
+}</p>
 
+${data.loansEnabled ? `
 <h3 class="sec">Loans from LLP to Partners</h3>
-<p>The LLP may extend loans to Partners at an interest rate of 6% per annum.</p>
+<p>The LLP may extend loans to Partners at an interest rate of <strong>${data.loanInterestRate || 6}%</strong> per annum.</p>
 <ul>
 <li>Must be approved in writing by both Partners.</li>
 <li>Repayment schedule must be documented.</li>
@@ -258,13 +262,16 @@ ${powers}
 </ul>
 
 <h3 class="sec">Loans to LLP from Partners</h3>
-<p>Partners may lend money to the LLP at 12% per annum, or any mutually agreed rate.</p>
+<p>Partners may lend money to the LLP at <strong>${data.loanInterestRate || 12}%</strong> per annum, or any mutually agreed rate.</p>
 <ul>
 <li>Interest shall be tax-deductible as per Section 40(b).</li>
 <li>Loan does NOT alter profit-sharing ratio.</li>
 <li>Repayment of Partner loans has priority over profit withdrawals.</li>
 </ul>
-
+` : `
+<h3 class="sec">Loans</h3>
+<p>No loans shall be extended from the LLP to any partners, and any loans brought into the LLP by partners shall be subject to a separate written agreement and the mutual consent of all partners.</p>
+`}
 ${others ? `
 <h3 class="sec">Any other Points</h3>
 <p>${ff(others,"&nbsp;")}</p>

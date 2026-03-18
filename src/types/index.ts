@@ -15,6 +15,7 @@ export interface Partner {
   fatherName: string;
   age: string;
   address: PartnerAddress;
+  aadhaarAddress?: string; // Raw extracted address
   isManagingPartner: boolean;
   isBankAuthorised: boolean;
   isDesignatedPartner: boolean;
@@ -26,6 +27,9 @@ export interface ProfitEntry       { partnerIndex: number; percentage: number; }
 export interface RegisteredAddress {
   doorNo: string; area: string; district: string; state: string; pin: string;
 }
+
+export type BankAuthority = "Single" | "Any Two" | "All";
+export type RemunerationType = "Fixed" | "Percentage" | "None";
 
 export interface LLPData {
   numPartners: number;
@@ -39,6 +43,14 @@ export interface LLPData {
   profits: ProfitEntry[];
   businessObjectives: string;
   otherPoints: string;
+  
+  // Governance & Operational Settings
+  bankAuthority: BankAuthority;
+  remunerationType: RemunerationType;
+  remunerationValue: string;
+  loansEnabled: boolean;
+  loanInterestRate: number;
+  arbitrationCity: string;
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -60,23 +72,45 @@ export function ordinalParty(i: number) {
   return (["First","Second","Third","Fourth","Fifth","Sixth","Seventh","Eighth","Ninth","Tenth"][i]??`${i+1}th`)+" Party";
 }
 export function fmtPartnerAddr(a: PartnerAddress) {
-  return [a.doorNo,a.area,a.city,a.district,a.state,"India"+(a.pin?" - "+a.pin:"")].filter(Boolean).join(", ");
+  const pin = (a.pin || "").trim();
+  if (!pin) return ""; 
+  const parts = [a.doorNo, a.area, a.city, a.district, a.state]
+    .map(s => (s || "").trim())
+    .filter(s => s && s.toLowerCase() !== "india");
+  return [...parts, "India - " + pin].join(", ");
 }
+
 export function fmtRegAddr(a: RegisteredAddress) {
-  return [a.doorNo,a.area,a.district,a.state,"India"+(a.pin?" - "+a.pin:"")].filter(Boolean).join(", ");
+  const pin = (a.pin || "").trim();
+  if (!pin) return "";
+  const parts = [a.doorNo, a.area, a.district, a.state]
+    .map(s => (s || "").trim())
+    .filter(s => s && s.toLowerCase() !== "india");
+  return [...parts, "India - " + pin].join(", ");
 }
 export function blankPartner(i: number): Partner {
   return { index:i, salutation:"Mr.", fullName:"", relationDescriptor:"S/O", fatherSalutation:"Mr.",
     fatherName:"", age:"", address:{doorNo:"",area:"",city:"",district:"",state:"",pin:""},
+    aadhaarAddress: "",
     isManagingPartner:i===0, isBankAuthorised:i===0, isDesignatedPartner:i<2 };
 }
 export function defaultData(): LLPData {
   const t = new Date();
   const d = t.toLocaleDateString("en-IN", { day:"numeric", month:"long", year:"numeric" });
-  return { numPartners:2, partners:[blankPartner(0),blankPartner(1)], llpName:"",
+  return { 
+    numPartners:2, partners:[blankPartner(0),blankPartner(1)], llpName:"",
     executionCity:"", executionDate:d, registeredAddress:{doorNo:"",area:"",district:"",state:"",pin:""},
     totalCapital:0, contributions:[{partnerIndex:0,percentage:0,amount:0},{partnerIndex:1,percentage:0,amount:0}],
-    profits:[{partnerIndex:0,percentage:0},{partnerIndex:1,percentage:0}], businessObjectives:"", otherPoints:"" };
+    profits:[{partnerIndex:0,percentage:0},{partnerIndex:1,percentage:0}], businessObjectives:"", otherPoints:"",
+    
+    // Default Governance Settings
+    bankAuthority: "Any Two",
+    remunerationType: "Percentage",
+    remunerationValue: "Working Partners",
+    loansEnabled: true,
+    loanInterestRate: 12,
+    arbitrationCity: ""
+  };
 }
 export function getMissing(d: LLPData): string[] {
   const m: string[] = [];
@@ -107,5 +141,7 @@ export function getPct(d: LLPData): number {
   if (Math.abs(d.contributions.reduce((s,c)=>s+(c.percentage||0),0)-100)<0.1) done++;
   if (Math.abs(d.profits.reduce((s,p)=>s+(p.percentage||0),0)-100)<0.1) done++;
   if (d.businessObjectives) done++;
-  return Math.round(done/10*100);
+  if (d.bankAuthority) done++;
+  if (d.arbitrationCity) done++;
+  return Math.round(done/12*100);
 }

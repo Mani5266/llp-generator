@@ -5,14 +5,14 @@ import { useTheme } from "./ThemeProvider";
 
 interface Msg { role:"agent"|"user"; content:string; options?:string[]; checkboxes?:string[]; snapshot?: { data: LLPData; step: string; done: boolean }; }
 interface Props {
-  data:LLPData; step:string; done:boolean; pct:number;
+  data:LLPData; step:string; done:boolean; pct:number; sessionId: string | null;
   onUpdates:(u:Record<string,unknown>)=>void;
   onStep:(s:string)=>void; onDone:()=>void; onRestart:()=>void;
   onRestore:(data:LLPData, step:string, done:boolean)=>void;
   onBackToDashboard?:()=>void;
 }
 
-export default function ChatPanel({data,step,done,pct,onUpdates,onStep,onDone,onRestart,onRestore,onBackToDashboard}:Props) {
+export default function ChatPanel({data,step,done,pct,sessionId,onUpdates,onStep,onDone,onRestart,onRestore,onBackToDashboard}:Props) {
   const { theme, toggle } = useTheme();
   const [msgs,setMsgs] = useState<Msg[]>([
     { role:"agent", content:"✨ Welcome to Deed AI Assistant!\n\nI am your AI legal assistant. I will craft a perfect LLP Agreement for you by asking a few conversational questions.\n\nHow many partners will be part of the LLP firm in total?", options:["2","3","4","5","5+"] },
@@ -107,7 +107,7 @@ export default function ChatPanel({data,step,done,pct,onUpdates,onStep,onDone,on
           </div>
           <div>
             <div style={{fontSize:15,fontWeight:700,color:"#ffffff",letterSpacing:"-0.3px"}}>Deed AI Assistant</div>
-            <div style={{fontSize:11,color:"#94a3b8",marginTop:1}}>Dynamic Legal Drafting</div>
+            <div style={{fontSize:10,color:"#94a3b8",marginTop:1, fontFamily:"monospace"}}>ID: {sessionId?.slice(0,8) || "..."}</div>
           </div>
         </div>
         <div style={{display:"flex",gap:6}}>
@@ -128,8 +128,26 @@ export default function ChatPanel({data,step,done,pct,onUpdates,onStep,onDone,on
 
       {/* Progress */}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 16px 4px",flexShrink:0,background:"var(--bg-secondary)",borderBottom:"1px solid var(--border-color)",transition:"background .3s ease"}}>
-        <span style={{fontSize:11,color:"var(--text-muted)",fontWeight:500}}>Drafting in progress...</span>
-        <span style={{fontSize:12,color:"var(--accent)",fontWeight:600}}>{pct}%</span>
+        <div style={{display:"flex",flexDirection:"column"}}>
+          <span style={{fontSize:11,color:"var(--text-muted)",fontWeight:500}}>Drafting in progress...</span>
+          <span style={{fontSize:10,color:"var(--accent)",fontWeight:600}}>Step {
+            step === "num_partners" ? 1 :
+            step.startsWith("partner_") ? 2 + parseInt(step.split("_")[1] || "0") :
+            step === "partner_summary" ? data.numPartners + 2 :
+            step === "designated_partners" ? data.numPartners + 3 :
+            step === "llp_name" ? data.numPartners + 4 :
+            step === "registered_address" ? data.numPartners + 5 :
+            step === "contributions" ? data.numPartners + 6 :
+            step === "profits" ? data.numPartners + 7 :
+            step === "governance" ? data.numPartners + 8 :
+            step === "remuneration" ? data.numPartners + 9 :
+            step === "loans" ? data.numPartners + 10 :
+            step === "arbitration" ? data.numPartners + 11 :
+            step === "business_objectives" ? data.numPartners + 12 :
+            step === "other_points" ? data.numPartners + 13 : data.numPartners + 14
+          } of {data.numPartners + 14}</span>
+        </div>
+        <span style={{fontSize:14,color:"var(--accent)",fontWeight:700}}>{pct}%</span>
       </div>
       <div style={{height:3,background:"var(--bg-progress)",margin:0,flexShrink:0}}>
         <div style={{height:3,background:"var(--accent)",width:`${pct}%`,transition:"width .5s ease"}}/>
@@ -240,9 +258,9 @@ export default function ChatPanel({data,step,done,pct,onUpdates,onStep,onDone,on
         <div ref={endRef}/>
       </div>
 
-      {/* Input */}
-      {!done&&(
-        <div style={{display:"flex",flexDirection:"column",background:"var(--bg-secondary)",borderTop:"1px solid var(--border-color)",flexShrink:0,transition:"background .3s ease"}}>
+      {/* Input area remains even after done for history review/questions */}
+      <div style={{display:"flex",flexDirection:"column",background:"var(--bg-secondary)",borderTop:"1px solid var(--border-color)",flexShrink:0,transition:"background .3s ease"}}>
+        {done && <div className="animate-slideUp" style={{background:isDark?"#0d2818":"#f0fdf6",borderBottom:isDark?"1px solid #1a6b3c":"1px solid #86efac",padding:"10px 14px",fontSize:12,color:isDark?"#2dd4a0":"#166534"}}>✅ Draft 100% complete. You can still ask questions here.</div>}
           {selectedFiles.length > 0 && (
             <div style={{padding:"12px 16px 0",display:"flex",gap:8,overflowX:"auto"}}>
               {selectedFiles.map((f, idx) => (
@@ -271,13 +289,12 @@ export default function ChatPanel({data,step,done,pct,onUpdates,onStep,onDone,on
                 style={{flex:1,padding:"10px 14px",fontSize:13,border:"1.5px solid var(--border-input)",borderRadius:24,background:"var(--bg-input)",color:"var(--text-primary)",fontFamily:"'Inter','Segoe UI',system-ui,sans-serif",outline:"none",resize:"none",minHeight:40,maxHeight:100,lineHeight:1.5,width:"100%",transition:"background .3s ease, border-color .3s ease"}} value={input} placeholder="Type or upload Aadhaar..."
                 onChange={e=>{setInput(e.target.value);e.target.style.height="40px";e.target.style.height=Math.min(e.target.scrollHeight,100)+"px";}}
                 onKeyDown={onKey} rows={1} disabled={busy}/>
-              <button style={{width:38,height:38,borderRadius:"50%",background:"var(--accent)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,opacity:busy||(!input.trim()&&selectedFiles.length===0)?.5:1,transition:"opacity .2s"}} onClick={()=>send(input)} disabled={busy||(!input.trim()&&selectedFiles.length===0)}>
+              <button style={{width:38,height:38,borderRadius:"50%",background:"var(--accent)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,opacity:(busy||(!input.trim()&&selectedFiles.length===0))?0.5:1,transition:"opacity .2s"}} onClick={()=>send(input)} disabled={busy||(!input.trim()&&selectedFiles.length===0)}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
               </button>
             </div>
           </div>
         </div>
-      )}
     </div>
   );
 }
