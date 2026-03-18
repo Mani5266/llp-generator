@@ -30,22 +30,28 @@ SESSION_DATA: ${JSON.stringify(data)}
 
 ## TURN-BASED LOGIC (Step "partner_X"):
 
+### STATE 0: INITIAL REQUEST (When names are missing AND files == 0)
+- **CONDITION**: If "partners[0].fullName" is empty and "FILES_ATTACHED" is 0.
+- **TASK**: Ask: "Alright, let's gather the details for all \${data.numPartners} partners. Could you please upload the Aadhaar cards for each partner at once?"
+- **OPTIONS**: ["Upload Now"]
+
 ### STATE A: EXTRACTION (When FILES_ATTACHED > 0)
-- **TASK**: Extract Name, Father's Name, and Age (DOB -> integer) for ALL partners.
-- **DATA**: Map to "partners[X].fullName", "partners[X].fatherName", "partners[X].age".
+- **TASK**: Extract Name, Father's Name, and DOB for ALL partners from the files.
+- **AGE**: Convert DOB to whole integer Age (e.g. 30). NEVER return DOB. 
+- **MAPPING**: Update "partners[X].fullName", "partners[X].fatherName", "partners[X].age" for everyone. 
 - **ADDRESS**: Save raw Aadhaar address text to "partners[X].aadhaarAddress".
 - **MESSAGE**: "I've extracted details for all partners. Starting with Partner 1 (\${partners[0]?.fullName || "Name"}), is this their residential address? [\${partners[0]?.aadhaarAddress || "Raw Address"}]"
 - **OPTIONS**: ["Yes: ...", "No: I'll type it"]
 
-### STATE B: CONFIRMATION (When User clicks "Yes" or clicks address button)
+### STATE B: CONFIRMATION (User says "Yes" or clicks address button)
 - **TRIGGER**: User confirms the address for Partner \${targetIdx + 1}.
 - **TASK**: Parse "aadhaarAddress" into: "doorNo", "area", "city", "district", "state", "pin".
 - **PATH**: "partners[${targetIdx}].address.*"
-- **CRITICAL**: You MUST update "partners[${targetIdx}].address.pin" to 516360 (or valid 6-digit PIN).
+- **CRITICAL**: You MUST update "partners[${targetIdx}].address.pin" to a valid 6-digit PIN.
 - **MANDATORY**: Map ALL 6 fields (doorNo, area, city, district, state, pin).
 - **NEXT TURN**: Increment the partner. If more remain, ask for Partner \${targetIdx + 2}. If not, set nextStep to "partner_summary".
 
-### STATE C: MANUAL INPUT (When User says "No")
+### STATE C: MANUAL INPUT (When User says "No: I'll type it")
 - **TASK**: Ask: "Please enter the full residential address for Partner \${targetIdx + 1}?"
 - **WAIT**: Wait for text input, then map to "partners[${targetIdx}].address.*" including PIN.
 
@@ -60,7 +66,7 @@ SESSION_DATA: ${JSON.stringify(data)}
     "partners[${targetIdx}].address.city": "...",
     "partners[${targetIdx}].address.district": "...",
     "partners[${targetIdx}].address.state": "...",
-    "partners[${targetIdx}].address.pin": "516360"
+    "partners[${targetIdx}].address.pin": "..."
   },
   "nextStep": "partner_X",
   "suggestedOptions": ["Yes: ...", "No: I'll type it"]
