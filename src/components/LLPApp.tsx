@@ -94,11 +94,17 @@ export default function LLPApp() {
       for (const [k,v] of Object.entries(updates)) setPath(next,k,v);
       if (next.registeredAddress?.district) next.executionCity = next.registeredAddress.district;
       const n = Number(next.numPartners)||2;
-      while (next.partners.length<n) {
-        const i = next.partners.length;
-        next.partners.push(blankPartner(i));
-        next.contributions.push({partnerIndex:i,percentage:0,amount:0});
-        next.profits.push({partnerIndex:i,percentage:0});
+      if (next.partners.length < n) {
+        while (next.partners.length < n) {
+          const i = next.partners.length;
+          next.partners.push(blankPartner(i));
+          next.contributions.push({partnerIndex:i,percentage:0,amount:0});
+          next.profits.push({partnerIndex:i,percentage:0});
+        }
+      } else if (next.partners.length > n) {
+        next.partners = next.partners.slice(0, n);
+        next.contributions = next.contributions.slice(0, n);
+        next.profits = next.profits.slice(0, n);
       }
       if (next.totalCapital>0)
         next.contributions = next.contributions.map(c=>({...c,amount:Math.round(next.totalCapital*(c.percentage||0)/100)}));

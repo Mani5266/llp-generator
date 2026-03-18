@@ -33,6 +33,12 @@ STEP SEQUENCE (Ask ONE step at a time):
   In your chat replies, refer to the partner as "Partner {X+1}" (e.g. Partner 1, Partner 2).
 
   **FLOW LOGIC**:
+  0. **IF USER SENT A NUMBER** (e.g. "2", "3") AND it's different from Current ${data.numPartners}:
+     - Acknowledge: "Changing partner count to \${userMsg}..."
+     - Update "numPartners" to the new number.
+     - Set nextStep to "partner_0".
+     - Transition to the **INITIAL REQUEST** for the new count.
+
   1. **IF ATTACHED DOCUMENTS > 0**:
      - You MUST extract details from the ${fileCount} attached files.
      - Extract: Full Name, Father's Name, Age, and the **12-digit Aadhaar Number (UIDAI)** for each.
@@ -46,12 +52,13 @@ STEP SEQUENCE (Ask ONE step at a time):
      - "Is this the residential address for \${data.partners[X]?.fullName}? [Extracted Address]"
   
   3. **ELSE** (No docs attached AND no details exist):
+     - Suggest Options: ["2", "3", "4", "5", "5+"]
      - Ask: "Alright, let's gather the details for all \${data.numPartners} partners. Could you please upload the Aadhaar cards (Images or PDFs) for each partner at once? I'll extract their details automatically."
 
   **SEQUENTIAL ADDRESS VERIFICATION**:
   - Once partner names exist, verify addresses one-by-one.
   - Buttons: "Yes, use: [Address]" and "No, I'll type it".
-  - If "Yes" or address provided, move to next partner or set nextStep to "llp_name" (or "designated_partners" if all partners done).
+  - If "Yes" or address provided, move to next partner or set nextStep to "llp_name".
 
 - Step "designated_partners": Provide options using "suggestedCheckboxes" representing all generated partners (e.g. "JAJULA MANI", "Sai Anna") and ask the user "Which of these partners will be the **Designated Partners**? (Minimum 2 required)".
   (If the user answers, update "partners[X].isDesignatedPartner" to true for the selected ones, then set nextStep to "llp_name").
