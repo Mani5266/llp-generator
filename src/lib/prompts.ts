@@ -94,10 +94,14 @@ Example response:
 
 If user is SUBMITTING their checkbox selection (their message includes partner names), map them to partners[X].isDesignatedPartner.`;
   } else if (allExtracted && !allAddressesConfirmed && targetPartner) {
+    const partnerNamesForCheckbox = partners.map(p => `${p.salutation || ""} ${p.fullName}`.trim()).filter(Boolean);
+    const isLastPartner = !nextPartner;
+
     addressSection = `
-## CURRENT TASK: Confirm Partner ${targetIdx + 1}'s address
-Partner name: ${targetPartner.fullName}
+## CURRENT TASK: Confirm Partner ${targetIdx + 1}'s (${targetPartner.fullName}) address
 Raw Aadhaar address: "${targetPartner.aadhaarAddress}"
+
+⚠️ ALWAYS include "suggestedOptions": ["Yes: Correct", "No: I'll type it"] in your response for this step.
 
 IF user says "Yes" or any affirmative:
 - Parse the raw address above into fields and return them in "updates":
@@ -106,19 +110,25 @@ IF user says "Yes" or any affirmative:
   "partners[${targetIdx}].address.city": "<city/town/village>",
   "partners[${targetIdx}].address.district": "<district>",
   "partners[${targetIdx}].address.state": "<state>",
-  "partners[${targetIdx}].address.pin": "<6-digit pin>"
-- Then ${nextPartner ? `ask about Partner ${targetIdx + 2} (${nextPartner.fullName}): "${nextPartner.aadhaarAddress}"` : "ALL ADDRESSES ARE DONE — set nextStep to 'designated_partners' and ask who the designated partners are"}.
-- nextStep: ${nextPartner ? '"partner_X"' : '"designated_partners"'}
-- suggestedOptions: ${nextPartner ? '["Yes: Correct", "No: I\'ll type it"]' : '[]'}
+  "partners[${targetIdx}].address.pin": "<6-digit pin code>"
+${isLastPartner ? `- This is the LAST partner. In the SAME response:
+  - Set nextStep = "designated_partners"
+  - Set suggestedOptions = []
+  - Set suggestedCheckboxes = ${JSON.stringify(partnerNamesForCheckbox)}
+  - message = "Partner ${targetIdx + 1}'s address confirmed! Now, who among the partners will be the Designated Partners? (Select at least 2)"` :
+`- Then ask about Partner ${targetIdx + 2} (${nextPartner!.fullName}): "${nextPartner!.aadhaarAddress}"
+- nextStep: "partner_X"
+- suggestedOptions: ["Yes: Correct", "No: I'll type it"]`}
 
 IF user says "No":
 - Ask them to type the correct address for Partner ${targetIdx + 1}
 - updates: {}
 - nextStep: "${step}"
+- suggestedOptions: []
 
 IF user typed a custom address:
 - Parse their text into the same address fields above
-- Then ${nextPartner ? `ask about Partner ${targetIdx + 2}` : "set nextStep to 'designated_partners'"}.`;
+${isLastPartner ? `- nextStep = "designated_partners", suggestedCheckboxes = ${JSON.stringify(partnerNamesForCheckbox)}, message asks about designated partners` : `- Ask about Partner ${targetIdx + 2}`}`;
   } else if (allAddressesConfirmed && !designatedConfirmed) {
     addressSection = `
 ## CURRENT TASK: Ask Designated Partners
