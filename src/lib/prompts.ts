@@ -14,22 +14,11 @@ export interface AIReply {
  * Dedicated prompt for Aadhaar extraction — called ONLY when files are attached.
  */
 export function buildExtractionPrompt(data: Partial<LLPData>, numFiles: number): string {
-  const numPartners = data.numPartners || 2;
-
-  // Generate a complete example with ALL partners filled in
-  const exampleUpdates: Record<string, string | number> = {};
-  for (let i = 0; i < numPartners; i++) {
-    exampleUpdates[`partners[${i}].fullName`] = `Full Name ${i + 1}`;
-    exampleUpdates[`partners[${i}].fatherName`] = `Father Name ${i + 1}`;
-    exampleUpdates[`partners[${i}].age`] = 30 + i;
-    exampleUpdates[`partners[${i}].aadhaarAddress`] = `Full raw address as on Aadhaar card ${i + 1}`;
-  }
-
   return `You are a data extraction assistant. ${numFiles} Aadhaar card image(s) have been attached.
 
 TASK: Extract the following for each Aadhaar card in order:
 1. Full Name (exactly as printed)
-2. Father/Mother/Spouse Name (from S/O, D/O, W/O — name only, no title)
+2. Father/Mother/Spouse Name (from S/O, D/O, W/O — name only, no title like Mr./Shri)
 3. Age in years (integer: 2026 - birth year from DOB)
 4. Full address (one string, copied exactly from the card)
 
@@ -38,17 +27,18 @@ Map card 1 -> partners[0], card 2 -> partners[1], card 3 -> partners[2], etc.
 - IMPORTANT: You MUST include ALL ${numFiles} partners in the updates object.
 - Do NOT parse the address — copy it as-is into aadhaarAddress.
 - If a field (like Father Name or Age) is not found or legible on a card, leave it as an empty string ("").
-- Return ONLY valid JSON (no markdown, no fences).
 
-Return this exact structure with real values:
-${JSON.stringify({
-  message: `I've extracted details for all ${numFiles} partners and mapped them to the document. Starting with Partner 1 ([name]), is this their residential address? [raw address]`,
-  updates: exampleUpdates,
-  nextStep: "partner_0",
-  suggestedOptions: ["Yes: Correct", "No: I'll type it"],
-  isComplete: false,
-  validationError: null,
-}, null, 2)}`;
+CONVERSATIONAL LOGIC FOR MESSAGE:
+1. If ALL basic details (Name, Father's Name, Age) for ALL ${numFiles} partners are found:
+   - Message: "I've extracted details for all ${numFiles} partners. Starting with Partner 1 ([name]), is this their residential address? [raw address]"
+   - nextStep: "partner_0"
+   - suggestedOptions: ["Yes: Correct", "No: I'll type it"]
+2. If ANY basic detail is MISSING for ANY partner:
+   - Message: "I've extracted details, but Partner [number] is missing their [Field Name]. Please provide it."
+   - nextStep: "partner_0"
+   - suggestedOptions: []
+
+Return ONLY valid JSON (no markdown, no fences).`;
 }
 
 /**
