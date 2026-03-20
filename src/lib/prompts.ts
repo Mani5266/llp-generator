@@ -95,7 +95,7 @@ IF the user HAS submitted a checkbox selection (message contains partner names o
 - Look up each partner name in the INDEX MAP above to find their exact index.
 - Set "partners[X].isDesignatedPartner" = true for EACH selected partner.
 - Set "partners[X].isDesignatedPartner" = false for EACH partner NOT selected.
-- Set "partners[X].isManagingPartner" = true for the FIRST designated partner only, false for the rest.
+- Set "partners[X].isManagingPartner" = true for EACH selected partner (same as isDesignatedPartner).
 - Set nextStep = "llp_name" (NOT "partner_X", NOT "partner_summary").
 - Validate: at least 2 must be selected. If less than 2 selected, set validationError and repeat the checkboxes.
 - CRITICAL: The message MUST end with: "Now, what will be the name of your LLP? (It must end with 'LLP')"
