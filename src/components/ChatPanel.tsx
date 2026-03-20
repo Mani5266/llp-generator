@@ -272,7 +272,7 @@ export default function ChatPanel({data,step,done,pct,sessionId,onUpdates,onStep
               ))}
             </div>
           )}
-          <div style={{padding:"10px 14px"}}>
+          <div style={{padding:"10px 14px 16px"}}>
             <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
               <input type="file" accept="image/*,application/pdf" multiple ref={fileInputRef} style={{display:"none"}} onChange={handleFileSelect} />
               <button style={{width:38,height:38,borderRadius:"50%",background:"transparent",color:"var(--text-muted)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}} onClick={()=>fileInputRef.current?.click()} disabled={busy}>
@@ -286,6 +286,11 @@ export default function ChatPanel({data,step,done,pct,sessionId,onUpdates,onStep
               <button style={{width:38,height:38,borderRadius:"50%",background:"var(--accent)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,opacity:(busy||(!input.trim()&&selectedFiles.length===0))?0.5:1,transition:"opacity .2s"}} onClick={()=>send(input)} disabled={busy||(!input.trim()&&selectedFiles.length===0)}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
               </button>
+            </div>
+            
+            <div style={{marginTop:10,fontSize:10.5,color:"var(--text-faint)",textAlign:"center",lineHeight:1.4,opacity:0.8}}>
+               LLP AI Assistant can make mistakes. Please verify important details.<br/>
+               You can edit any field by clicking the <strong>Edit</strong> option in the document preview.
             </div>
           </div>
         </div>
