@@ -14,36 +14,35 @@ export interface AIReply {
  * Dedicated prompt for Aadhaar extraction — called ONLY when files are attached.
  */
 export function buildExtractionPrompt(data: Partial<LLPData>, numFiles: number): string {
-  return `You are a data extraction assistant. ${numFiles} Aadhaar card image(s) have been attached.
+  return `You are "LLP AI Assistant". ${numFiles} Aadhaar card image(s) have been attached.
 
-TASK: Extract the following for each Aadhaar card in order:
-1. Salutation (Mr., Mrs., Ms., Dr. - based on name/gender/relation)
-2. Full Name (exactly as printed)
-3. Relation Descriptor (S/O, D/O, W/O - based on pre-fixed text like Son of, Daughter of)
-4. Father/Mother/Spouse Name (name only, no title like Mr./Shri)
-5. Age in years (integer: 2026 - birth year from DOB)
-6. Full address (one string, copied exactly from the card)
+TASK: Extract details for each partner with 100% accuracy.
+1. Salutation: (Mr., Mrs., Ms., Dr.) - Infer from name/gender.
+2. Full Name: (Exactly as printed on the front).
+3. Relation Descriptor: (S/O, D/O, W/O) - Found on the back/bottom.
+4. Father/Mother/Spouse Name: (Found after S/O, D/O, W/O. Extract name ONLY, no titles like Mr./Shri).
+5. Age: (Integer: 2026 minus birth year).
+6. Full Address: (One string, copied exactly from the card).
 
-Map card 1 -> partners[0], card 2 -> partners[1], card 3 -> partners[2], etc.
+MAPPING: Card 1 -> partners[0], Card 2 -> partners[1], etc.
 
-- IMPORTANT: You MUST include ALL ${numFiles} partners in the updates object.
-- Do NOT parse the address — copy it as-is into aadhaarAddress.
-- If a field (like Father Name or Age) is not found or legible on a card, leave it as an empty string ("").
-- JSON SAFETY: Avoid using backslashes (\) in any field unless they are part of a valid JSON escape (like \").
+STRICT RULES:
+- ANTI-HALLUCINATION: If a field (especially Father's Name) is NOT present or legible on a card, you MUST leave it as an empty string (""). NEVER invent, guess, or provide a fake name.
+- NO MIXING: Ensure details from Card 1 do not leak into Partner 2.
+- ADDRESS: Copy the address as-is into "aadhaarAddress". Do not parse it yet.
+- JSON SAFETY: Avoid unescaped backslashes (\\) in any field.
 
-CONVERSATIONAL LOGIC FOR MESSAGE:
-- ALWAYS include the "updates" object containing EVERY successfully extracted field (fullName, fatherName, age, aadhaarAddress) for EVERY partner.
-- MAP THE DETAILS IMMEDIATELY to the document via the "updates" object.
-- In the "message", use 1-based indexing (Partner 1, Partner 2) for clarity, but use 0-based indexing (partners[0], partners[1]) in the "updates" keys.
+CONVERSATIONAL LOGIC:
+- ALWAYS include the "updates" object with EVERY found field for EVERY partner to map them to the document immediately.
+- Use 1-indexed "Partner 1", "Partner 2" in your "message" to the user.
+- Use 0-indexed indices in the "updates" keys (e.g., partners[0]).
 
-1. If ALL basic details (Name, Father's Name, Age) for ALL ${numFiles} partners are found:
-   - updates: { "partners[0].fullName": "...", "partners[1].fullName": "...", etc. }
+1. If Name, Father's Name, and Age are FOUND for ALL partners:
    - Message: "I've extracted details for all ${numFiles} partners and mapped them to the document. Starting with Partner 1 ([name]), is this their residential address? [raw address]"
    - nextStep: "partner_0"
    - suggestedOptions: ["Yes: Correct", "No: I'll type it"]
-2. If ANY basic detail is MISSING for ANY partner:
-   - updates: { "partners[0].fullName": "...", etc. (all fields that WERE found) }
-   - Message: "I've extracted details for the partners and mapped them to the document. However, Partner [1-indexed number] is missing their [Field Name]. Please provide it."
+2. If ANY basic detail (Name/Father/Age) is MISSING:
+   - Message: "I've mapped the extracted details to the document. However, Partner [1-indexed number] is missing their [Field Name]. Please provide it."
    - nextStep: "partner_0"
    - suggestedOptions: []
 
