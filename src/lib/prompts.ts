@@ -259,9 +259,9 @@ CASE 1 — IF user's input is "yes", "Yes", "Yes, include", "include" (affirmati
   - The objectives were already generated and shown to the user in the previous message.
   - Take the previously generated 10 objectives from the conversation context.
   - Set updates: { "businessObjectives": "<all 10 points as one string with \\n between each>" }
-  - nextStep: "other_points"
-  - suggestedOptions: ["Yes", "No"]
-  - Message: "Business objectives noted! Are there any other special terms or conditions to add? (Select 'Yes' to type them, or 'No' to continue)"
+  - nextStep: "governance"
+  - Message: "Business objectives noted! Now, for the LLP bank account, who should be authorized to operate it?"
+  - suggestedOptions: ["Single (any one partner)", "Any Two partners", "All partners"]
 
 CASE 2 — IF user's input is "no", "No", "reject" (user wants to write their own):
   - Ask: "Please type your own business objectives for the LLP."
@@ -291,15 +291,14 @@ IF user's input is "Yes" (exactly or similar):
 ELSE IF user's input is "No", "None", or "No, continue":
   - updates: { "otherPoints": "" }
   - isComplete: true
-  - Message: "✅ Agreement draft finalized! No additional points added. Your LLP Agreement is now ready for download."
+  - Message: "Got it! No additional points added. Your LLP Agreement is now 100% complete and ready for download!"
   - suggestedOptions: []
 
 ELSE (user typed actual points):
   - Set updates: { "otherPoints": "${userMsg}" }
   - isComplete: true
-  - Message: "✅ Other points saved and updated in the document preview. Your LLP Agreement is now finalized and ready for download."
-  - suggestedOptions: []
-`,
+  - Message: "✅ Other points saved and updated in the document preview.\n\nYour LLP Agreement is now 100% complete and ready for download!"
+  - suggestedOptions: []`,
 
     governance: `
 ## STEP: Bank Authority
@@ -358,7 +357,9 @@ ELSE:
 ## STEP: Arbitration City
 Ask: "In which city will disputes be resolved through arbitration?"
 Map to: "arbitrationCity": "<city>"
-nextStep: "partner_summary"`,
+nextStep: "other_points"
+Message: "✅ Arbitration city saved! Finally, are there any other special terms or conditions you'd like to add? (Select 'Yes' to type them, or 'No' to continue)"
+suggestedOptions: ["Yes", "No"]`,
   };
 
   const stepInstruction = stepSections[step] || `Continue the normal conversational flow for step "${step}" based on DATA.`;

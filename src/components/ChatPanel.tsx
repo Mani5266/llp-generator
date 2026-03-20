@@ -1,28 +1,22 @@
 "use client";
 import { useState, useRef, useEffect, useCallback, ChangeEvent } from "react";
-import { LLPData, ChatMessage } from "@/types";
+import { LLPData } from "@/types";
 import { useTheme } from "./ThemeProvider";
-import { Dispatch, SetStateAction } from "react";
 
+interface Msg { role:"agent"|"user"; content:string; options?:string[]; checkboxes?:string[]; snapshot?: { data: LLPData; step: string; done: boolean }; }
 interface Props {
   data:LLPData; step:string; done:boolean; pct:number; sessionId: string | null;
-  msgs: ChatMessage[];
-  setMsgs: Dispatch<SetStateAction<ChatMessage[]>>;
   onUpdates:(u:Record<string,unknown>)=>void;
   onStep:(s:string)=>void; onDone:()=>void; onRestart:()=>void;
   onRestore:(data:LLPData, step:string, done:boolean)=>void;
   onBackToDashboard?:()=>void;
 }
 
-export default function ChatPanel({data,step,done,pct,sessionId,msgs,setMsgs,onUpdates,onStep,onDone,onRestart,onRestore,onBackToDashboard}:Props) {
+export default function ChatPanel({data,step,done,pct,sessionId,onUpdates,onStep,onDone,onRestart,onRestore,onBackToDashboard}:Props) {
   const { theme, toggle } = useTheme();
-  useEffect(() => {
-    if (msgs.length === 0 && !done) {
-      setMsgs([
-        { role:"agent", content:"✨ Welcome to Deed AI Assistant!\n\nI am your AI legal assistant. I will craft a perfect LLP Agreement for you by asking a few conversational questions.\n\nHow many partners will be part of the LLP firm in total?", options:["2","3","4","5","5+"] },
-      ]);
-    }
-  }, [msgs.length, setMsgs, done]);
+  const [msgs,setMsgs] = useState<Msg[]>([
+    { role:"agent", content:"✨ Welcome to Deed AI Assistant!\n\nI am your AI legal assistant. I will craft a perfect LLP Agreement for you by asking a few conversational questions.\n\nHow many partners will be part of the LLP firm in total?", options:["2","3","4","5","5+"] },
+  ]);
   const [input,setInput] = useState("");
   const [busy,setBusy]   = useState(false);
   const [checkedItems,setCheckedItems] = useState<Record<string,boolean>>({});
@@ -33,7 +27,7 @@ export default function ChatPanel({data,step,done,pct,sessionId,msgs,setMsgs,onU
 
   useEffect(()=>{ endRef.current?.scrollIntoView({behavior:"smooth"}); },[msgs,busy]);
 
-  const push = useCallback((m:ChatMessage)=>setMsgs(p=>[...p,m]),[setMsgs]);
+  const push = useCallback((m:Msg)=>setMsgs(p=>[...p,m]),[]);
 
   const send = useCallback(async(text:string)=>{
     const msg=text.trim(); 
@@ -139,19 +133,18 @@ export default function ChatPanel({data,step,done,pct,sessionId,msgs,setMsgs,onU
           <span style={{fontSize:10,color:"var(--accent)",fontWeight:600}}>Step {
             step === "num_partners" ? 1 :
             step.startsWith("partner_") ? 2 + parseInt(step.split("_")[1] || "0") :
-            step === "partner_summary" ? data.numPartners + 2 :
-            step === "designated_partners" ? data.numPartners + 3 :
-            step === "llp_name" ? data.numPartners + 4 :
-            step === "registered_address" ? data.numPartners + 5 :
-            step === "contributions" ? data.numPartners + 6 :
-            step === "profits" ? data.numPartners + 7 :
+            step === "designated_partners" ? data.numPartners + 2 :
+            step === "llp_name" ? data.numPartners + 3 :
+            step === "registered_address" ? data.numPartners + 4 :
+            step === "contributions" ? data.numPartners + 5 :
+            step === "profits" ? data.numPartners + 6 :
+            step === "business_objectives" ? data.numPartners + 7 :
             step === "governance" ? data.numPartners + 8 :
             step === "remuneration" ? data.numPartners + 9 :
             step === "loans" ? data.numPartners + 10 :
             step === "arbitration" ? data.numPartners + 11 :
-            step === "business_objectives" ? data.numPartners + 12 :
-            step === "other_points" ? data.numPartners + 13 : data.numPartners + 14
-          } of {data.numPartners + 14}</span>
+            step === "other_points" ? data.numPartners + 12 : data.numPartners + 13
+          } of {data.numPartners + 13}</span>
         </div>
         <span style={{fontSize:14,color:"var(--accent)",fontWeight:700}}>{pct}%</span>
       </div>

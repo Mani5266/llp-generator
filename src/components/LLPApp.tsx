@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { LLPData, defaultData, blankPartner, getPct, getMissing, ChatMessage } from "@/types";
+import { LLPData, defaultData, blankPartner, getPct, getMissing } from "@/types";
 import ChatPanel from "./ChatPanel";
 import DocumentPanel from "./DocumentPanel";
 import { supabase } from "@/lib/supabase";
@@ -27,7 +27,6 @@ export default function LLPApp() {
   const [data, setData]     = useState<LLPData>(defaultData());
   const [step, setStep]     = useState("num_partners");
   const [done, setDone]     = useState(false);
-  const [msgs, setMsgs]     = useState<ChatMessage[]>([]);
   const [html, setHtml]     = useState("");
   const timer = useRef<ReturnType<typeof setTimeout>|null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -45,14 +44,12 @@ export default function LLPApp() {
           setData(dbData.data as LLPData);
           setStep(dbData.step);
           setDone(dbData.is_done);
-          if (dbData.messages) setMsgs(dbData.messages as ChatMessage[]);
         } else if (error) {
           supabase.from("agreements").select("*").eq("id", id).single().then(({ data: fallbackData, error: fallbackError }) => {
             if (!fallbackError && fallbackData && fallbackData.data && Object.keys(fallbackData.data).length > 0) {
               setData(fallbackData.data as LLPData);
               setStep(fallbackData.step);
               setDone(fallbackData.is_done);
-              if (fallbackData.messages) setMsgs(fallbackData.messages as ChatMessage[]);
             } else {
               router.replace("/dashboard");
             }
@@ -60,7 +57,7 @@ export default function LLPApp() {
         }
       });
     } else {
-      supabase.from("agreements").insert([{ data: defaultData(), step: "num_partners", is_done: false, user_id: user.id, messages: [] }]).select().single().then(({ data: dbData, error }) => {
+      supabase.from("agreements").insert([{ data: defaultData(), step: "num_partners", is_done: false, user_id: user.id }]).select().single().then(({ data: dbData, error }) => {
         if (!error && dbData) {
           setSessionId(dbData.id);
           window.history.replaceState({}, "", `?id=${dbData.id}`);
@@ -74,11 +71,11 @@ export default function LLPApp() {
     if (!sessionId) return;
     const saveTimer = setTimeout(() => {
       supabase.from("agreements").update({
-        data, step, is_done: done, messages: msgs, updated_at: new Date().toISOString()
+        data, step, is_done: done, updated_at: new Date().toISOString()
       }).eq("id", sessionId).then();
     }, 1000);
     return () => clearTimeout(saveTimer);
-  }, [data, step, done, msgs, sessionId]);
+  }, [data, step, done, sessionId]);
 
   useEffect(()=>{
     if (timer.current) clearTimeout(timer.current);
@@ -150,7 +147,6 @@ export default function LLPApp() {
            className={typeof window !== "undefined" && window.innerWidth <= 768 ? "" : ""}
            id="chat-section">
         <ChatPanel data={data} step={step} done={done} pct={getPct(data)} sessionId={sessionId}
-          msgs={msgs} setMsgs={setMsgs}
           onUpdates={applyUpdates} onStep={setStep} onDone={()=>setDone(true)} onRestart={restart}
           onRestore={(d, s, dn) => { setData(d); setStep(s); setDone(dn); }}
           onBackToDashboard={() => router.push("/dashboard")} />
