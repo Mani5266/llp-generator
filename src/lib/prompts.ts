@@ -230,6 +230,7 @@ IF the user's input contains percentages (numbers that could be partner shares):
     "contributions[i].percentage": <parsed %>,
     "contributions[i].amount": Math.round((<parsed %> / 100) * ${totalCapital})
   - nextStep: "profits"
+  - CRITICAL: Message MUST end with the profit question: "Now, how will profits and losses be shared among the partners? (must total 100%)\n${partners.map((p, i) => `- Partner ${i + 1} (${p.fullName}): ?%`).join("\n")}"
 ELSE:
   - Ask: "What is the capital contribution percentage for each partner? (must total 100%)\n${partners.map((p, i) => `- Partner ${i + 1} (${p.fullName}): ?%`).join("\n")}"
   - updates: {}, nextStep: "contributions"`,
@@ -244,6 +245,7 @@ IF the user's input contains percentages for profit sharing:
   - Validate they sum to exactly 100. If not, set validationError.
   - For each partner i, set: "profits[i].percentage": <parsed %>
   - nextStep: "business_objectives"
+  - CRITICAL: Message MUST end with the business objectives question: "Now, briefly describe the main business activity of your LLP. (e.g. 'Software consulting and IT services')"
 ELSE:
   - Ask: "How will profits and losses be shared among the partners? (must total 100%)\n${partners.map((p, i) => `- Partner ${i + 1} (${p.fullName}): ?%`).join("\n")}"
   - updates: {}, nextStep: "profits"`,
