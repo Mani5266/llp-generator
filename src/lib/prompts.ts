@@ -98,6 +98,7 @@ IF the user HAS submitted a checkbox selection (message contains partner names o
 - Set "partners[X].isManagingPartner" = true for the FIRST designated partner only, false for the rest.
 - Set nextStep = "llp_name" (NOT "partner_X", NOT "partner_summary").
 - Validate: at least 2 must be selected. If less than 2 selected, set validationError and repeat the checkboxes.
+- CRITICAL: The message MUST end with: "Now, what will be the name of your LLP? (It must end with 'LLP')"
 - Example updates structure (replace with actual selected/unselected values):
 ${JSON.stringify(exampleUpdates, null, 2)}`;
 
@@ -177,18 +178,18 @@ ELSE:
     llp_name: `
 ## STEP: LLP Name
 USER input: "${userMsg}"
-IF the user's input IS the LLP name (contains text ending with "LLP" or "llp"):
+IF the user's input IS the LLP name (contains any text, especially ending with "LLP" or "llp"):
   - Set updates: { "llpName": "${userMsg}" }
   - Set nextStep: "registered_address"
-  - Message: "Great! '${userMsg}' has been registered. Now, what is the registered office address of the LLP?"
-ELSE (user hasn't answered yet):
-  - Ask: "What will be the name of your LLP? (Must end with 'LLP')"
+  - Message: "✅ Great! '${userMsg}' has been saved as your LLP name. You can already see it appear in the document preview on the right.\n\nNow, what is the registered office address of the LLP? Please provide:\n- Door/Flat No.\n- Area/Street\n- District\n- State\n- PIN Code"
+ELSE IF the user's message is empty, unrelated, or a greeting:
+  - Ask: "What will be the name of your LLP? (Must end with 'LLP', e.g. 'ABC Enterprises LLP')"
   - updates: {}, nextStep: "llp_name"`,
 
     registered_address: `
 ## STEP: Registered Address
 USER input: "${userMsg}"
-IF the user's input looks like an address (contains numbers, area, or city name):
+IF the user's input looks like an address (contains street/area/city/district/state/PIN):
   - Parse the address into: doorNo, area, district, state, pin
   - Set ALL of these in updates:
     "registeredAddress.doorNo": "...",
@@ -196,10 +197,11 @@ IF the user's input looks like an address (contains numbers, area, or city name)
     "registeredAddress.district": "...",
     "registeredAddress.state": "...",
     "registeredAddress.pin": "...",
-    "executionCity": "<same as district>" ← CRITICAL: sets the [Place] field
+    "executionCity": "<same as district>" ← CRITICAL: sets the [Place] field in the deed header
+  - Message: "✅ Registered address saved! You can see it mapped in the document preview.\n\nNow, what is the total capital contribution of the LLP in Rupees? (e.g. 100000 for ₹1 Lakh)"
   - nextStep: "total_capital"
-ELSE:
-  - Ask: "What is the registered office address of the LLP? Please provide door no, area, district, state and PIN."
+ELSE IF message is empty or not an address:
+  - Ask: "What is the registered office address of the LLP? Please provide:\n- Door/Flat No.\n- Area/Street\n- District\n- State\n- PIN Code"
   - updates: {}, nextStep: "registered_address"`,
 
     total_capital: `
