@@ -140,7 +140,7 @@ export function getPct(d: LLPData): number {
   if (d.llpName) done++;
   if (d.executionDate) done++;
   if (d.registeredAddress?.doorNo) done++;
-  if (d.partners.length > 0 && d.partners.every(p => p.fullName)) done++;
+  if (d.partners.length > 0 && d.partners.every(p => p.fullName && p.fatherName && p.age)) done++;
   if (d.totalCapital>0) done++;
   if (Math.abs(d.contributions.reduce((s,c)=>s+(c.percentage||0),0)-100)<0.1) done++;
   if (Math.abs(d.profits.reduce((s,p)=>s+(p.percentage||0),0)-100)<0.1) done++;

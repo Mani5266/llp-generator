@@ -35,9 +35,9 @@ TASK: Extract the following for each Aadhaar card in order:
 
 Map card 1 -> partners[0], card 2 -> partners[1], card 3 -> partners[2], etc.
 
-IMPORTANT:
-- You MUST include ALL ${numFiles} partners in the updates object.
+- IMPORTANT: You MUST include ALL ${numFiles} partners in the updates object.
 - Do NOT parse the address — copy it as-is into aadhaarAddress.
+- If a field (like Father Name or Age) is not found or legible on a card, leave it as an empty string ("").
 - Return ONLY valid JSON (no markdown, no fences).
 
 Return this exact structure with real values:
@@ -58,11 +58,15 @@ export function buildPrompt(userMsg: string, data: Partial<LLPData>, step: strin
   const partners: Partner[] = (data.partners || []) as Partner[];
   const numPartners = data.numPartners || partners.length || 2;
 
-  const allExtracted = partners.length > 0 && partners.every(p => p.fullName);
+  const allExtracted = partners.length > 0 && partners.every(p => p.fullName && p.fatherName && p.age);
   const nextIdx = allExtracted ? partners.findIndex(p => !p.address?.pin) : -1;
   const targetIdx = nextIdx !== -1 ? nextIdx : -1;
   const targetPartner = targetIdx >= 0 ? partners[targetIdx] : null;
   const nextPartner = targetIdx >= 0 ? partners[targetIdx + 1] : null;
+
+  const missingPartnerIdx = partners.findIndex(p => !p.fullName || !p.fatherName || !p.age);
+  const mp = missingPartnerIdx !== -1 ? partners[missingPartnerIdx] : null;
+
   const allAddressesConfirmed = allExtracted && partners.every(p => p.address?.pin);
   const designatedConfirmed = partners.some(p => p.isDesignatedPartner);
 
@@ -102,6 +106,22 @@ IF the user HAS submitted a checkbox selection (message contains partner names o
 - Example updates structure (replace with actual selected/unselected values):
 ${JSON.stringify(exampleUpdates, null, 2)}`;
 
+  } else if (mp) {
+    const missingField = !mp.fullName ? "Full Name" : (!mp.fatherName ? "Father's Name" : "Age");
+    addressSection = `
+## CURRENT TASK: Collect Missing Basic Details for Partner ${missingPartnerIdx + 1}
+Partner ${missingPartnerIdx + 1} (${mp.fullName || "New Partner"}) is missing their **${missingField}**.
+
+IF user provides the ${missingField}:
+- updates: { "partners[${missingPartnerIdx}].${missingField === "Full Name" ? "fullName" : (missingField === "Father's Name" ? "fatherName" : "age")}": "${userMsg}" }
+- nextStep: "partner_0"
+- message: "Got it! ${missingField} for Partner ${missingPartnerIdx + 1} saved. " (Then check if more missing, else ask about address)
+
+IF the information provided completes ALL basic details (Name, Father's Name, Age) for this partner:
+- nextStep: "partner_0"
+- message: "Details for Partner ${missingPartnerIdx + 1} are now complete. Starting with their address from Aadhaar: '${mp.aadhaarAddress}', is this correct?"
+- suggestedOptions: ["Yes: Correct", "No: I'll type it"]
+`;
   } else if (allExtracted && !allAddressesConfirmed && targetPartner) {
     const partnerNamesForCheckbox = partners.map(p => `${p.salutation || ""} ${p.fullName}`.trim()).filter(Boolean);
     const isLastPartner = !nextPartner;
@@ -145,7 +165,7 @@ All addresses confirmed. Now ask who the designated partners are.
 Set nextStep = "designated_partners".
 Use suggestedCheckboxes with all partner names.`;
   } else {
-    addressSection = `Partners not extracted yet. Ask the user to attach all ${numPartners} Aadhaar cards using the 📎 button.`;
+    addressSection = `Identify if any partners are completely missing. If so, ask the user to attach all ${numPartners} Aadhaar cards using the 📎 button. Currently ${partners.filter(p=>p.fullName).length} partners have names.`;
   }
 
   // ── Step-specific logic for post-confirmation steps ──────────────────────────
