@@ -19,7 +19,7 @@
 
 ### 🤖 AI-Powered Drafting
 - **Conversational Interface** — A step-by-step chat assistant that collects partner details, capital contributions, profit-sharing ratios, business objectives, and more through natural conversation.
-- **Google Gemini Integration** — Uses `gemini-2.5-flash` to intelligently parse user responses, validate inputs, and generate structured updates to the LLP agreement.
+- **Google Gemini Integration** — Uses `gemini-2.5-flash-lite` to intelligently parse user responses, validate inputs, and generate structured updates to the LLP agreement.
 - **Aadhaar OCR** — Upload an image of an Aadhaar card and the AI extracts partner details (name, address, DOB) automatically.
 - **Smart Suggestions** — Quick-select option buttons and checkboxes for common inputs like number of partners, Indian states, and designated partner selection.
 - **Business Objective Generation** — AI generates comprehensive business objectives tailored to your industry.
@@ -79,7 +79,7 @@
 | **Framework** | [Next.js 15](https://nextjs.org/) (App Router) |
 | **Language** | [TypeScript 5.9](https://www.typescriptlang.org/) |
 | **UI** | [React 19](https://react.dev/) + Inline Styles + CSS Variables |
-| **AI** | [Google Gemini 2.0 Flash](https://ai.google.dev/) (`@google/generative-ai`) |
+| **AI** | [Google Gemini 2.5 Flash Lite](https://ai.google.dev/) (`@google/generative-ai`) |
 | **Database** | [Supabase](https://supabase.com/) (PostgreSQL + Row Level Security) |
 | **Auth** | [Supabase Auth](https://supabase.com/docs/guides/auth) (Email/Password) |
 | **Document Export** | [`docx`](https://www.npmjs.com/package/docx) (DOCX) + Server-side HTML → PDF |
