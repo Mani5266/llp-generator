@@ -68,6 +68,10 @@ export function numWords(n: number): string {
   return o[n];
 }
 export function fmtINR(n: number) { return Math.round(n).toLocaleString("en-IN"); }
+export function toTitleCase(s: string) {
+  if (!s) return "";
+  return s.toLowerCase().split(' ').map(w => w === "llp" ? "LLP" : w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
 export function ordinalParty(i: number) {
   return (["First","Second","Third","Fourth","Fifth","Sixth","Seventh","Eighth","Ninth","Tenth"][i]??`${i+1}th`)+" Party";
 }

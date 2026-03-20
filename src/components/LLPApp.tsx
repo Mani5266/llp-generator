@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { LLPData, defaultData, blankPartner, getPct, getMissing } from "@/types";
+import { LLPData, defaultData, blankPartner, getPct, getMissing, toTitleCase } from "@/types";
 import ChatPanel from "./ChatPanel";
 import DocumentPanel from "./DocumentPanel";
 import { supabase } from "@/lib/supabase";
@@ -92,6 +92,7 @@ export default function LLPApp() {
     setData(prev=>{
       const next = JSON.parse(JSON.stringify(prev)) as LLPData & Record<string,unknown>;
       for (const [k,v] of Object.entries(updates)) setPath(next,k,v);
+      if (next.llpName) next.llpName = toTitleCase(String(next.llpName));
       if (next.registeredAddress?.district) {
         next.executionCity = next.registeredAddress.district;
         if (!next.arbitrationCity) next.arbitrationCity = next.registeredAddress.district;

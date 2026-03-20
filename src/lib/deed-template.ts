@@ -1,4 +1,4 @@
-import { LLPData, numWords, fmtINR, ordinalParty, fmtPartnerAddr, fmtRegAddr } from "@/types";
+import { LLPData, numWords, fmtINR, ordinalParty, fmtPartnerAddr, fmtRegAddr, toTitleCase } from "@/types";
 
 function esc(s: string) {
   return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
@@ -19,7 +19,7 @@ export function renderDeed(data: LLPData, mode: "preview"|"print"): string {
     return s ? esc(s).replace(/\n/g, "<br/>") : esc(ph);
   };
 
-  const nm  = data.llpName?.trim() || null;
+  const nm  = data.llpName?.trim() ? toTitleCase(data.llpName.trim()) : null;
   const LLP = nm
     ? (pv ? `<span class="filled">M/S. ${esc(nm)}</span>` : `M/S. ${esc(nm)}`)
     : (pv ? `<span class="empty">M/S. [NAME OF THE LLP]</span>` : "M/S. [NAME OF THE LLP]");
