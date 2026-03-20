@@ -260,8 +260,8 @@ CASE 1 — IF user's input is "yes", "Yes", "Yes, include", "include" (affirmati
   - Take the previously generated 10 objectives from the conversation context.
   - Set updates: { "businessObjectives": "<all 10 points as one string with \\n between each>" }
   - nextStep: "other_points"
-  - suggestedOptions: []
-  - Message: "Business objectives noted! Are there any other special terms or conditions to add? (Type 'None' if not)"
+  - suggestedOptions: ["Yes", "No"]
+  - Message: "Business objectives noted! Are there any other special terms or conditions to add? (Select 'Yes' to type them, or 'No' to continue)"
 
 CASE 2 — IF user's input is "no", "No", "reject" (user wants to write their own):
   - Ask: "Please type your own business objectives for the LLP."
@@ -281,14 +281,24 @@ CASE 4 — IF user's input is empty or unrelated:
     other_points: `
 ## STEP: Other Special Points
 USER input: "${userMsg}"
-IF user's input is "None", "none", "no", or empty — or they have answered with any text:
-  - Set updates: { "otherPoints": "${userMsg.toLowerCase() === "none" || userMsg.toLowerCase() === "no" ? "" : userMsg}" }
+
+IF user's input is "Yes" (exactly or similar):
+  - nextStep: "other_points"
+  - updates: {}
+  - Message: "Please enter the special terms or conditions you'd like to add to the agreement. I'll map them to the document immediately."
+  - suggestedOptions: ["None / No"]
+
+ELSE IF user's input is "No", "None", or "No, continue":
+  - updates: { "otherPoints": "" }
   - nextStep: "governance"
-  - Message: "Got it! Now, for the LLP bank account, who should be authorized to operate it?"
+  - Message: "Got it! No additional points added. Now, for the LLP bank account, who should be authorized to operate it?"
   - suggestedOptions: ["Single (any one partner)", "Any Two partners", "All partners"]
-ELSE first time / no answer yet:
-  - Ask: "Are there any other special terms or conditions to add to the agreement? (Type 'None' if not)"
-  - updates: {}, nextStep: "other_points"`,
+
+ELSE (user typed actual points):
+  - Set updates: { "otherPoints": "${userMsg}" }
+  - nextStep: "governance"
+  - Message: "✅ Other points saved and updated in the document preview.\n\nNow, for the LLP bank account, who should be authorized to operate it?"
+  - suggestedOptions: ["Single (any one partner)", "Any Two partners", "All partners"]`,
 
     governance: `
 ## STEP: Bank Authority
