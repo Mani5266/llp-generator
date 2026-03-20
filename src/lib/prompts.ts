@@ -44,7 +44,7 @@ Return this exact structure with real values:
 ${JSON.stringify({
   message: `I've extracted details for all ${numFiles} partners and mapped them to the document. Starting with Partner 1 ([name]), is this their residential address? [raw address]`,
   updates: exampleUpdates,
-  nextStep: "partner_X",
+  nextStep: "partner_0",
   suggestedOptions: ["Yes: Correct", "No: I'll type it"],
   isComplete: false,
   validationError: null,
@@ -126,7 +126,7 @@ ${isLastPartner ? `- This is the LAST partner. In the SAME response:
   - Set suggestedCheckboxes = ${JSON.stringify(partnerNamesForCheckbox)}
   - message = "Partner ${targetIdx + 1}'s address confirmed! Now, who among the partners will be the Designated Partners? (Select at least 2)"` :
 `- Then ask about Partner ${targetIdx + 2} (${nextPartner!.fullName}): "${nextPartner!.aadhaarAddress}"
-- nextStep: "partner_X"
+- nextStep: "partner_0"
 - suggestedOptions: ["Yes: Correct", "No: I'll type it"]`}
 
 IF user says "No":
@@ -379,7 +379,7 @@ GLOBAL RULES:
 2. Never go back to a previous step.
 3. Follow the STEP INSTRUCTION below exactly.
 
-${step === "partner_X" || step === "designated_partners" ? addressSection : stepInstruction}
+${step === "partner_0" || step === "designated_partners" ? addressSection : stepInstruction}
 
 JSON output must always have all these fields:
 { "message": "...", "updates": {}, "nextStep": "...", "suggestedOptions": [], "suggestedCheckboxes": [], "isComplete": false, "validationError": null }`;

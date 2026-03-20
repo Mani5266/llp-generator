@@ -131,7 +131,7 @@ export default function ChatPanel({data,step,done,pct,sessionId,onUpdates,onStep
           <span style={{fontSize:11,color:"var(--text-muted)",fontWeight:500}}>Drafting in progress...</span>
           <span style={{fontSize:10,color:"var(--accent)",fontWeight:600}}>Step {
             step === "num_partners" ? 1 :
-            step.startsWith("partner_") ? 2 + parseInt(step.split("_")[1] || "0") :
+            step.startsWith("partner_") ? 2 + (parseInt(step.split("_")[1]) || 0) :
             step === "designated_partners" ? data.numPartners + 2 :
             step === "llp_name" ? data.numPartners + 3 :
             step === "registered_address" ? data.numPartners + 4 :
