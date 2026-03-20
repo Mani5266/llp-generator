@@ -254,6 +254,10 @@ export default function ChatPanel({data,step,done,pct,sessionId,onUpdates,onStep
 
       {/* Input area remains even after done for history review/questions */}
       <div style={{display:"flex",flexDirection:"column",background:"var(--bg-secondary)",borderTop:"1px solid var(--border-color)",flexShrink:0,transition:"background .3s ease"}}>
+        <div style={{padding:"8px 14px",fontSize:10.5,color:"var(--text-faint)",textAlign:"center",lineHeight:1.4,background:"rgba(0,0,0,0.03)",borderBottom:"1px solid var(--border-color)"}}>
+           LLP AI Assistant can make mistakes. Please verify important details.<br/>
+           You can edit any field by clicking the <strong>Edit</strong> option in the document preview.
+        </div>
         {done && <div className="animate-slideUp" style={{background:isDark?"#0d2818":"#f0fdf6",borderBottom:isDark?"1px solid #1a6b3c":"1px solid #86efac",padding:"10px 14px",fontSize:12,color:isDark?"#2dd4a0":"#166534"}}>✅ Draft 100% complete. You can still ask questions here.</div>}
           {selectedFiles.length > 0 && (
             <div style={{padding:"12px 16px 0",display:"flex",gap:8,overflowX:"auto"}}>
@@ -286,11 +290,6 @@ export default function ChatPanel({data,step,done,pct,sessionId,onUpdates,onStep
               <button style={{width:38,height:38,borderRadius:"50%",background:"var(--accent)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,opacity:(busy||(!input.trim()&&selectedFiles.length===0))?0.5:1,transition:"opacity .2s"}} onClick={()=>send(input)} disabled={busy||(!input.trim()&&selectedFiles.length===0)}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
               </button>
-            </div>
-            
-            <div style={{marginTop:10,fontSize:10.5,color:"var(--text-faint)",textAlign:"center",lineHeight:1.4,opacity:0.8}}>
-               LLP AI Assistant can make mistakes. Please verify important details.<br/>
-               You can edit any field by clicking the <strong>Edit</strong> option in the document preview.
             </div>
           </div>
         </div>
