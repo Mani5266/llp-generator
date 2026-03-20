@@ -31,6 +31,14 @@ export interface RegisteredAddress {
 export type BankAuthority = "Single" | "Any Two" | "All";
 export type RemunerationType = "Fixed" | "Percentage" | "None";
 
+export interface ChatMessage {
+  role: "agent" | "user";
+  content: string;
+  options?: string[];
+  checkboxes?: string[];
+  snapshot?: { data: LLPData; step: string; done: boolean };
+}
+
 export interface LLPData {
   numPartners: number;
   partners: Partner[];

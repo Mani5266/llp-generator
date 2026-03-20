@@ -290,15 +290,16 @@ IF user's input is "Yes" (exactly or similar):
 
 ELSE IF user's input is "No", "None", or "No, continue":
   - updates: { "otherPoints": "" }
-  - nextStep: "governance"
-  - Message: "Got it! No additional points added. Now, for the LLP bank account, who should be authorized to operate it?"
-  - suggestedOptions: ["Single (any one partner)", "Any Two partners", "All partners"]
+  - isComplete: true
+  - Message: "✅ Agreement draft finalized! No additional points added. Your LLP Agreement is now ready for download."
+  - suggestedOptions: []
 
 ELSE (user typed actual points):
   - Set updates: { "otherPoints": "${userMsg}" }
-  - nextStep: "governance"
-  - Message: "✅ Other points saved and updated in the document preview.\n\nNow, for the LLP bank account, who should be authorized to operate it?"
-  - suggestedOptions: ["Single (any one partner)", "Any Two partners", "All partners"]`,
+  - isComplete: true
+  - Message: "✅ Other points saved and updated in the document preview. Your LLP Agreement is now finalized and ready for download."
+  - suggestedOptions: []
+`,
 
     governance: `
 ## STEP: Bank Authority

@@ -1,22 +1,28 @@
 "use client";
 import { useState, useRef, useEffect, useCallback, ChangeEvent } from "react";
-import { LLPData } from "@/types";
+import { LLPData, ChatMessage } from "@/types";
 import { useTheme } from "./ThemeProvider";
+import { Dispatch, SetStateAction } from "react";
 
-interface Msg { role:"agent"|"user"; content:string; options?:string[]; checkboxes?:string[]; snapshot?: { data: LLPData; step: string; done: boolean }; }
 interface Props {
   data:LLPData; step:string; done:boolean; pct:number; sessionId: string | null;
+  msgs: ChatMessage[];
+  setMsgs: Dispatch<SetStateAction<ChatMessage[]>>;
   onUpdates:(u:Record<string,unknown>)=>void;
   onStep:(s:string)=>void; onDone:()=>void; onRestart:()=>void;
   onRestore:(data:LLPData, step:string, done:boolean)=>void;
   onBackToDashboard?:()=>void;
 }
 
-export default function ChatPanel({data,step,done,pct,sessionId,onUpdates,onStep,onDone,onRestart,onRestore,onBackToDashboard}:Props) {
+export default function ChatPanel({data,step,done,pct,sessionId,msgs,setMsgs,onUpdates,onStep,onDone,onRestart,onRestore,onBackToDashboard}:Props) {
   const { theme, toggle } = useTheme();
-  const [msgs,setMsgs] = useState<Msg[]>([
-    { role:"agent", content:"✨ Welcome to Deed AI Assistant!\n\nI am your AI legal assistant. I will craft a perfect LLP Agreement for you by asking a few conversational questions.\n\nHow many partners will be part of the LLP firm in total?", options:["2","3","4","5","5+"] },
-  ]);
+  useEffect(() => {
+    if (msgs.length === 0 && !done) {
+      setMsgs([
+        { role:"agent", content:"✨ Welcome to Deed AI Assistant!\n\nI am your AI legal assistant. I will craft a perfect LLP Agreement for you by asking a few conversational questions.\n\nHow many partners will be part of the LLP firm in total?", options:["2","3","4","5","5+"] },
+      ]);
+    }
+  }, [msgs.length, setMsgs, done]);
   const [input,setInput] = useState("");
   const [busy,setBusy]   = useState(false);
   const [checkedItems,setCheckedItems] = useState<Record<string,boolean>>({});
@@ -27,7 +33,7 @@ export default function ChatPanel({data,step,done,pct,sessionId,onUpdates,onStep
 
   useEffect(()=>{ endRef.current?.scrollIntoView({behavior:"smooth"}); },[msgs,busy]);
 
-  const push = useCallback((m:Msg)=>setMsgs(p=>[...p,m]),[]);
+  const push = useCallback((m:ChatMessage)=>setMsgs(p=>[...p,m]),[setMsgs]);
 
   const send = useCallback(async(text:string)=>{
     const msg=text.trim(); 
