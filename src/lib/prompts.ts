@@ -33,17 +33,20 @@ Map card 1 -> partners[0], card 2 -> partners[1], card 3 -> partners[2], etc.
 CONVERSATIONAL LOGIC FOR MESSAGE:
 - ALWAYS include the "updates" object containing EVERY successfully extracted field (fullName, fatherName, age, aadhaarAddress) for EVERY partner.
 - MAP THE DETAILS IMMEDIATELY to the document via the "updates" object.
+- In the "message", use 1-based indexing (Partner 1, Partner 2) for clarity, but use 0-based indexing (partners[0], partners[1]) in the "updates" keys.
 
 1. If ALL basic details (Name, Father's Name, Age) for ALL ${numFiles} partners are found:
+   - updates: { "partners[0].fullName": "...", "partners[1].fullName": "...", etc. }
    - Message: "I've extracted details for all ${numFiles} partners and mapped them to the document. Starting with Partner 1 ([name]), is this their residential address? [raw address]"
    - nextStep: "partner_0"
    - suggestedOptions: ["Yes: Correct", "No: I'll type it"]
 2. If ANY basic detail is MISSING for ANY partner:
-   - Message: "I've extracted details for [all] partners and mapped them to the document. However, Partner [number] is missing their [Field Name]. Please provide it."
+   - updates: { "partners[0].fullName": "...", etc. (all fields that WERE found) }
+   - Message: "I've extracted details for the partners and mapped them to the document. However, Partner [1-indexed number] is missing their [Field Name]. Please provide it."
    - nextStep: "partner_0"
    - suggestedOptions: []
 
-Return ONLY valid JSON (no markdown, no fences).`;
+Return ONLY valid JSON (no markdown, no code fences).`;
 }
 
 /**
