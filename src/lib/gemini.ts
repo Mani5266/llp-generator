@@ -12,7 +12,7 @@ function client() {
 }
 
 export async function geminiText(prompt: string, files?: Array<{ base64: string; mimeType: string }>): Promise<string> {
-  const m = client().getGenerativeModel({ model: "gemini-2.5-flash" });
+  const m = client().getGenerativeModel({ model: "gemini-2.5-flash-lite" });
   const parts: any[] = [{ text: prompt }];
   if (files && files.length > 0) {
     for (const f of files) {
