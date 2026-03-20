@@ -136,8 +136,7 @@ export function getPct(d: LLPData): number {
   if (d.llpName) done++;
   if (d.executionDate) done++;
   if (d.registeredAddress?.doorNo) done++;
-  if (d.partners[0]?.fullName) done++;
-  if (d.partners[1]?.fullName) done++;
+  if (d.partners.length > 0 && d.partners.every(p => p.fullName)) done++;
   if (d.totalCapital>0) done++;
   if (Math.abs(d.contributions.reduce((s,c)=>s+(c.percentage||0),0)-100)<0.1) done++;
   if (Math.abs(d.profits.reduce((s,p)=>s+(p.percentage||0),0)-100)<0.1) done++;
@@ -145,5 +144,5 @@ export function getPct(d: LLPData): number {
   if (d.bankAuthority) done++;
   if (d.arbitrationCity) done++;
   if (d.otherPoints !== undefined) done++;
-  return Math.round(done/13*100);
+  return Math.round(done/12*100);
 }

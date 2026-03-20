@@ -15,7 +15,7 @@ interface Props {
 export default function ChatPanel({data,step,done,pct,sessionId,onUpdates,onStep,onDone,onRestart,onRestore,onBackToDashboard}:Props) {
   const { theme, toggle } = useTheme();
   const [msgs,setMsgs] = useState<Msg[]>([
-    { role:"agent", content:"✨ Welcome to Deed AI Assistant!\n\nI am your AI legal assistant. I will craft a perfect LLP Agreement for you by asking a few conversational questions.\n\nHow many partners will be part of the LLP firm in total?", options:["2","3","4","5","5+"] },
+    { role:"agent", content:"✨ Welcome to LLP AI Assistant!\n\nI am your AI legal assistant. I will craft a perfect LLP Agreement for you by asking a few conversational questions.\n\nHow many partners will be part of the LLP firm in total?", options:["2","3","4","5","5+"] },
   ]);
   const [input,setInput] = useState("");
   const [busy,setBusy]   = useState(false);
@@ -106,8 +106,7 @@ export default function ChatPanel({data,step,done,pct,sessionId,onUpdates,onStep
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
           </div>
           <div>
-            <div style={{fontSize:15,fontWeight:700,color:"#ffffff",letterSpacing:"-0.3px"}}>Deed AI Assistant</div>
-            <div style={{fontSize:10,color:"#94a3b8",marginTop:1, fontFamily:"monospace"}}>ID: {sessionId?.slice(0,8) || "..."}</div>
+            <div style={{fontSize:15,fontWeight:700,color:"#ffffff",letterSpacing:"-0.3px"}}>LLP AI Assistant</div>
           </div>
         </div>
         <div style={{display:"flex",gap:6}}>
