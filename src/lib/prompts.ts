@@ -29,6 +29,7 @@ Map card 1 -> partners[0], card 2 -> partners[1], card 3 -> partners[2], etc.
 - IMPORTANT: You MUST include ALL ${numFiles} partners in the updates object.
 - Do NOT parse the address — copy it as-is into aadhaarAddress.
 - If a field (like Father Name or Age) is not found or legible on a card, leave it as an empty string ("").
+- JSON SAFETY: Avoid using backslashes (\) in any field unless they are part of a valid JSON escape (like \").
 
 CONVERSATIONAL LOGIC FOR MESSAGE:
 - ALWAYS include the "updates" object containing EVERY successfully extracted field (fullName, fatherName, age, aadhaarAddress) for EVERY partner.

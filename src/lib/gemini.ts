@@ -37,9 +37,15 @@ export async function geminiJSON<T>(prompt: string, files?: Array<{ base64: stri
     return JSON.parse(clean) as T;
   } catch (err) {
     console.warn("[geminiJSON] Initial parse failed, attempting cleanup:", err);
-    // Escape unescaped backslashes that aren't part of a valid escape sequence
-    // This regex looks for \ followed by anything NOT (" \ / b f n r t u)
+    
+    // 1. Fix unescaped backslashes that aren't followed by valid escape chars
+    // Valid JSON escapes: \" \\ \/ \b \f \n \r \t \uXXXX
     clean = clean.replace(/\\(?![/\\bfnrtu"'])/g, "\\\\");
+
+    // 2. Fix invalid \u sequences (e.g., \u followed by non-hex or less than 4 hex)
+    // We look for \u NOT followed by 4 hex digits and escape the \
+    clean = clean.replace(/\\u(?![0-9a-fA-F]{4})/g, "\\\\u");
+
     try {
       return JSON.parse(clean) as T;
     } catch (finalErr) {
