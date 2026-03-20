@@ -259,9 +259,9 @@ CASE 1 — IF user's input is "yes", "Yes", "Yes, include", "include" (affirmati
   - The objectives were already generated and shown to the user in the previous message.
   - Take the previously generated 10 objectives from the conversation context.
   - Set updates: { "businessObjectives": "<all 10 points as one string with \\n between each>" }
-  - nextStep: "governance"
-  - Message: "Business objectives noted! Now, for the LLP bank account, who should be authorized to operate it?"
-  - suggestedOptions: ["Single (any one partner)", "Any Two partners", "All partners"]
+  - nextStep: "other_points"
+  - suggestedOptions: ["Yes", "No"]
+  - Message: "Business objectives noted! Finally, are there any other special terms or conditions you'd like to add? (Select 'Yes' to type them, or 'No' to continue)"
 
 CASE 2 — IF user's input is "no", "No", "reject" (user wants to write their own):
   - Ask: "Please type your own business objectives for the LLP."
@@ -355,11 +355,8 @@ ELSE:
 
     arbitration: `
 ## STEP: Arbitration City
-Ask: "In which city will disputes be resolved through arbitration?"
-Map to: "arbitrationCity": "<city>"
-nextStep: "other_points"
-Message: "✅ Arbitration city saved! Finally, are there any other special terms or conditions you'd like to add? (Select 'Yes' to type them, or 'No' to continue)"
-suggestedOptions: ["Yes", "No"]`,
+(DEPRECATED - Use Default)
+nextStep: "other_points"`,
   };
 
   const stepInstruction = stepSections[step] || `Continue the normal conversational flow for step "${step}" based on DATA.`;

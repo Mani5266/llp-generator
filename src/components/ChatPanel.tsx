@@ -139,12 +139,8 @@ export default function ChatPanel({data,step,done,pct,sessionId,onUpdates,onStep
             step === "contributions" ? data.numPartners + 5 :
             step === "profits" ? data.numPartners + 6 :
             step === "business_objectives" ? data.numPartners + 7 :
-            step === "governance" ? data.numPartners + 8 :
-            step === "remuneration" ? data.numPartners + 9 :
-            step === "loans" ? data.numPartners + 10 :
-            step === "arbitration" ? data.numPartners + 11 :
-            step === "other_points" ? data.numPartners + 12 : data.numPartners + 13
-          } of {data.numPartners + 13}</span>
+            step === "other_points" ? data.numPartners + 8 : data.numPartners + 9
+          } of {data.numPartners + 8}</span>
         </div>
         <span style={{fontSize:14,color:"var(--accent)",fontWeight:700}}>{pct}%</span>
       </div>

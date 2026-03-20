@@ -92,7 +92,10 @@ export default function LLPApp() {
     setData(prev=>{
       const next = JSON.parse(JSON.stringify(prev)) as LLPData & Record<string,unknown>;
       for (const [k,v] of Object.entries(updates)) setPath(next,k,v);
-      if (next.registeredAddress?.district) next.executionCity = next.registeredAddress.district;
+      if (next.registeredAddress?.district) {
+        next.executionCity = next.registeredAddress.district;
+        if (!next.arbitrationCity) next.arbitrationCity = next.registeredAddress.district;
+      }
       const n = Number(next.numPartners)||2;
       if (next.partners.length < n) {
         while (next.partners.length < n) {
