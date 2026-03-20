@@ -30,6 +30,21 @@ export async function geminiText(prompt: string, files?: Array<{ base64: string;
 
 export async function geminiJSON<T>(prompt: string, files?: Array<{ base64: string; mimeType: string }>): Promise<T> {
   const raw = await geminiText(prompt + "\n\nReturn ONLY valid JSON. No markdown, no code fences, no explanation.", files);
-  const clean = raw.replace(/^```json\s*/i,"").replace(/^```\s*/i,"").replace(/```\s*$/i,"").trim();
-  return JSON.parse(clean) as T;
+  let clean = raw.replace(/^```json\s*/i,"").replace(/^```\s*/i,"").replace(/```\s*$/i,"").trim();
+  
+  // Robustness fix: Fix common JSON syntax errors from AI (like unescaped backslashes in paths)
+  try {
+    return JSON.parse(clean) as T;
+  } catch (err) {
+    console.warn("[geminiJSON] Initial parse failed, attempting cleanup:", err);
+    // Escape unescaped backslashes that aren't part of a valid escape sequence
+    // This regex looks for \ followed by anything NOT (" \ / b f n r t u)
+    clean = clean.replace(/\\(?![/\\bfnrtu"'])/g, "\\\\");
+    try {
+      return JSON.parse(clean) as T;
+    } catch (finalErr) {
+      console.error("[geminiJSON] Cleanup also failed. Raw content:", raw);
+      throw finalErr;
+    }
+  }
 }

@@ -258,7 +258,7 @@ CURRENT businessObjectives in DATA: "${(data as LLPData).businessObjectives || "
 CASE 1 — IF user's input is "yes", "Yes", "Yes, include", "include" (affirmative to include objectives):
   - The objectives were already generated and shown to the user in the previous message.
   - Take the previously generated 10 objectives from the conversation context.
-  - Set updates: { "businessObjectives": "<all 10 points as one string with \\n between each>" }
+  - Set updates: { "businessObjectives": "<all 10 points as one string, joined by newline characters>" }
   - nextStep: "other_points"
   - suggestedOptions: ["Yes", "No"]
   - Message: "Business objectives noted! Finally, are there any other special terms or conditions you'd like to add? (Select 'Yes' to type them, or 'No' to continue)"
