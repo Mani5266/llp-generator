@@ -17,10 +17,12 @@ export function buildExtractionPrompt(data: Partial<LLPData>, numFiles: number):
   return `You are a data extraction assistant. ${numFiles} Aadhaar card image(s) have been attached.
 
 TASK: Extract the following for each Aadhaar card in order:
-1. Full Name (exactly as printed)
-2. Father/Mother/Spouse Name (from S/O, D/O, W/O — name only, no title like Mr./Shri)
-3. Age in years (integer: 2026 - birth year from DOB)
-4. Full address (one string, copied exactly from the card)
+1. Salutation (Mr., Mrs., Ms., Dr. - based on name/gender/relation)
+2. Full Name (exactly as printed)
+3. Relation Descriptor (S/O, D/O, W/O - based on pre-fixed text like Son of, Daughter of)
+4. Father/Mother/Spouse Name (name only, no title like Mr./Shri)
+5. Age in years (integer: 2026 - birth year from DOB)
+6. Full address (one string, copied exactly from the card)
 
 Map card 1 -> partners[0], card 2 -> partners[1], card 3 -> partners[2], etc.
 
@@ -29,12 +31,15 @@ Map card 1 -> partners[0], card 2 -> partners[1], card 3 -> partners[2], etc.
 - If a field (like Father Name or Age) is not found or legible on a card, leave it as an empty string ("").
 
 CONVERSATIONAL LOGIC FOR MESSAGE:
+- ALWAYS include the "updates" object containing EVERY successfully extracted field (fullName, fatherName, age, aadhaarAddress) for EVERY partner.
+- MAP THE DETAILS IMMEDIATELY to the document via the "updates" object.
+
 1. If ALL basic details (Name, Father's Name, Age) for ALL ${numFiles} partners are found:
-   - Message: "I've extracted details for all ${numFiles} partners. Starting with Partner 1 ([name]), is this their residential address? [raw address]"
+   - Message: "I've extracted details for all ${numFiles} partners and mapped them to the document. Starting with Partner 1 ([name]), is this their residential address? [raw address]"
    - nextStep: "partner_0"
    - suggestedOptions: ["Yes: Correct", "No: I'll type it"]
 2. If ANY basic detail is MISSING for ANY partner:
-   - Message: "I've extracted details, but Partner [number] is missing their [Field Name]. Please provide it."
+   - Message: "I've extracted details for [all] partners and mapped them to the document. However, Partner [number] is missing their [Field Name]. Please provide it."
    - nextStep: "partner_0"
    - suggestedOptions: []
 
@@ -102,15 +107,16 @@ ${JSON.stringify(exampleUpdates, null, 2)}`;
 ## CURRENT TASK: Collect Missing Basic Details for Partner ${missingPartnerIdx + 1}
 Partner ${missingPartnerIdx + 1} (${mp.fullName || "New Partner"}) is missing their **${missingField}**.
 
-IF user provides the ${missingField}:
-- updates: { "partners[${missingPartnerIdx}].${missingField === "Full Name" ? "fullName" : (missingField === "Father's Name" ? "fatherName" : "age")}": "${userMsg}" }
-- nextStep: "partner_0"
-- message: "Got it! ${missingField} for Partner ${missingPartnerIdx + 1} saved. " (Then check if more missing, else ask about address)
-
-IF the information provided completes ALL basic details (Name, Father's Name, Age) for this partner:
-- nextStep: "partner_0"
-- message: "Details for Partner ${missingPartnerIdx + 1} are now complete. Starting with their address from Aadhaar: '${mp.aadhaarAddress}', is this correct?"
-- suggestedOptions: ["Yes: Correct", "No: I'll type it"]
+IF user provides the missing information:
+- updates: Include the new value(s) in "updates".
+- If this was the LAST missing basic detail for ALL partners:
+  - nextStep: "partner_0"
+  - message: "Details for Partner ${missingPartnerIdx + 1} saved! Now all partners have their basic details. Starting with Partner 1's (${partners[0].fullName}) address from Aadhaar: '${partners[0].aadhaarAddress}', is this correct?"
+  - suggestedOptions: ["Yes: Correct", "No: I'll type it"]
+- ELSE (more basic details still missing for this or other partners):
+  - nextStep: "partner_0"
+  - message: "Got it! ${missingField} for Partner ${missingPartnerIdx + 1} saved. [Ask for next missing field]"
+  - suggestedOptions: []
 `;
   } else if (allExtracted && !allAddressesConfirmed && targetPartner) {
     const partnerNamesForCheckbox = partners.map(p => `${p.salutation || ""} ${p.fullName}`.trim()).filter(Boolean);
