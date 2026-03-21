@@ -273,10 +273,10 @@ ${data.loansEnabled ? `
 <p>No loans shall be extended from the LLP to any partners, and any loans brought into the LLP by partners shall be subject to a separate written agreement and the mutual consent of all partners.</p>
 `}
 
-${(data.otherPoints === "" || (data.otherPoints == null && !pv)) ? "" : `
+${data.otherPoints !== "" ? `
 <h3 class="sec">Any other Points</h3>
 <div class="indent-block"><p>${ffMulti(others, "[Any other Points]")}</p></div>
-`}
+` : ""}
 <p>IN WITNESS WHEREOF the parties have put their respective hands the day and year first here in above Written, Signed and Delivered by the For and on behalf of</p>
 
 <p class="center" style="margin-top: 30px;"><strong>${nm?(pv?`<span class="filled">${esc(nm)}</span>`:`${esc(nm)}`):(pv?`<span class="empty">[NAME OF THE LLP]</span>`:"[NAME OF THE LLP]")}</strong></p>
