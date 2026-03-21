@@ -274,8 +274,7 @@ ${data.loansEnabled ? `
 `}
 
 ${data.otherPoints !== "" ? `
-<h3 class="sec">Any other Points</h3>
-<div class="indent-block"><p>${ffMulti(others, "[Any other Points]")}</p></div>
+<p>${ffMulti(others, "[Any other Points]")}</p>
 ` : ""}
 <p>IN WITNESS WHEREOF the parties have put their respective hands the day and year first here in above Written, Signed and Delivered by the For and on behalf of</p>
 
