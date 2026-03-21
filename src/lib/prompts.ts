@@ -18,37 +18,36 @@ export function buildExtractionPrompt(data: Partial<LLPData>, numFiles: number):
 
 TASK: Extract details for each partner with 100% accuracy.
 1. Salutation: (Mr., Mrs., Ms., Dr.) - Infer from name/gender.
-2. Full Name: (Exactly as printed on the front).
-3. Relation Descriptor: (S/O, D/O, W/O) - Found on the back/bottom.
-4. Father/Mother/Spouse Name: (Found after S/O, D/O, W/O. Extract name ONLY, no titles like Mr./Shri).
-5. Age: (Integer: 2026 minus birth year).
-6. Full Address: (One string, copied exactly from the card).
+2. Full Name: (Found on the FRONT. Exactly as printed).
+3. Relation Descriptor: (S/O, D/O, W/O) - Found on the BACK/BOTTOM (e.g., "S/O: Name").
+4. Father/Mother/Spouse Name: (Found on the BACK/BOTTOM after S/O, D/O, or W/O. Extract the name ONLY. Remove titles like Mr. or Shri).
+5. Age: (Found on the FRONT as "Year of Birth" or "DOB". Calculate: 2026 minus birth year. Return as a string).
+6. Full Address: (Found on the BACK. One string, copied exactly).
 
-MAPPING (VERY IMPORTANT):
-For each Card i (where i starts from 0), you MUST include these exact keys in the "updates" object:
-- "partners[i].fullName": (string)
+MAPPING (STRICT):
+For each Card i (where i is the 0-based index of the card), you MUST include these EXACT keys in the "updates" object:
+- "partners[i].fullName": (string: Name from front)
 - "partners[i].relationDescriptor": (string: "S/O", "D/O", or "W/O")
-- "partners[i].fatherName": (string: The extracted name)
-- "partners[i].age": (string: The calculated age)
-- "partners[i].aadhaarAddress": (string: The raw address from the card)
+- "partners[i].fatherName": (string: Name after relation descriptor)
+- "partners[i].age": (string: 2026 - birth year)
+- "partners[i].aadhaarAddress": (string: Exact address from back)
 
 STRICT RULES:
-- ANTI-HALLUCINATION: If a field (especially Father's Name) is NOT present or legible on a card, you MUST leave it as an empty string (""). NEVER invent, guess, or provide a fake name.
-- NO MIXING: Ensure details from Card 1 do not leak into Partner 2.
-- ADDRESS: Copy the address as-is into "aadhaarAddress". Do not parse it yet.
-- JSON SAFETY: Avoid unescaped backslashes (\\) in any field.
+- ANTI-HALLUCINATION: If "Father's Name" is NOT legible on the card, leave it as "". NEVER guess.
+- NO MIXING: Ensure Card 1 maps to partners[0], Card 2 to partners[1], etc.
+- JSON SAFETY: No unescaped backslashes.
 
 CONVERSATIONAL LOGIC:
-- ALWAYS include the "updates" object with EVERY found field for EVERY partner to map them to the document immediately.
-- Use 1-indexed "Partner 1", "Partner 2" in your "message" to the user.
-- Use 0-indexed indices in the "updates" keys (e.g., partners[0]).
+- ALWAYS include the "updates" object with ALL fields found for ALL partners.
+- Use 1-indexed "Partner 1", "Partner 2" in your "message".
+- Use 0-indexed indices (e.g., partners[0]) in the "updates" keys.
 
-1. If Name, Father's Name, and Age are FOUND for ALL partners:
+1. If Name, Father's Name, AND Age are FOUND for ALL partners:
    - Message: "I've extracted details for all ${numFiles} partners and mapped them to the document. Starting with Partner 1 ([name]), is this their residential address? [raw address]"
    - nextStep: "partner_0"
    - suggestedOptions: ["Yes: Correct", "No: I'll type it"]
-2. If ANY basic detail (Name/Father/Age) is MISSING:
-   - Message: "I've mapped the extracted details to the document. However, Partner [1-indexed number] is missing their [Field Name]. Please provide it."
+2. If ANY basic detail (FullName/FatherName/Age) is MISSING:
+   - Message: "I've mapped the extracted details. However, Partner [1-indexed number] is missing their [Field Name]. Please provide it."
    - nextStep: "partner_0"
    - suggestedOptions: []
 
@@ -112,17 +111,19 @@ ${JSON.stringify(exampleUpdates, null, 2)}`;
 
   } else if (mp) {
     const missingField = !mp.fullName ? "Full Name" : (!mp.fatherName ? "Father's Name" : "Age");
+    const fieldKey = !mp.fullName ? "fullName" : (!mp.fatherName ? "fatherName" : "age");
+    
     addressSection = `
 ## CURRENT TASK: Collect Missing Basic Details for Partner ${missingPartnerIdx + 1}
 Partner ${missingPartnerIdx + 1} (${mp.fullName || "New Partner"}) is missing their **${missingField}**.
 
 IF user provides the missing information:
-- updates: Include the new value(s) in "updates".
+- updates: You MUST use the key "partners[${missingPartnerIdx}].${fieldKey}" in your updates object.
 - If this was the LAST missing basic detail for ALL partners:
   - nextStep: "partner_0"
   - message: "Details for Partner ${missingPartnerIdx + 1} saved! Now all partners have their basic details. Starting with Partner 1's (${partners[0].fullName}) address from Aadhaar: '${partners[0].aadhaarAddress}', is this correct?"
   - suggestedOptions: ["Yes: Correct", "No: I'll type it"]
-- ELSE (more basic details still missing for this or other partners):
+- ELSE (more basic details still missing):
   - nextStep: "partner_0"
   - message: "Got it! ${missingField} for Partner ${missingPartnerIdx + 1} saved. [Ask for next missing field]"
   - suggestedOptions: []
