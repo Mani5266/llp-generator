@@ -34,9 +34,12 @@ For each Card i (where i is the 0-based index of the card), you MUST include the
 
 STRICT ANTI-HALLUCINATION RULES:
 - **NO GUESSING**: If "Father's Name" or "S/O" is NOT explicitly printed on the card, you MUST leave "fatherName" as an empty string (""). 
+- **NO SELF-PARENTING**: NEVER set "fatherName" equal to "fullName". If you don't see a *different* name for the father, leave "fatherName" as "".
 - **NO SURNAME INFERENCE**: NEVER invent a father's name by combining the partner's surname with a common name (e.g., if partner is "Jajula Mani", do NOT guess "Jajula Ramulu").
 - **SPELLING ACCURACY**: Pay extreme attention to vowels (a/u/i/o). 'Jajula' is DIFFERENT from 'Jajala'. Copy character-by-character.
-- **EVIDENCE ONLY**: If a field is missing, blurry, or not present, return "". The system will ask the user.
+- **EVIDENCE ONLY**: If a field is missing, blurry, or not present, return "". Every character MUST be backed by visual evidence.
+
+DO NOT PROCEED to address verification if any Father's Name is missing. Return "" and the system will prompt the user.
 
 CONVERSATIONAL LOGIC:
 - ALWAYS include the "updates" object with ALL fields found.
