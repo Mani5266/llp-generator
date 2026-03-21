@@ -28,6 +28,8 @@ export default function ChatPanel({data,step,done,pct,sessionId,onUpdates,onStep
   useEffect(()=>{ endRef.current?.scrollIntoView({behavior:"smooth"}); },[msgs,busy]);
 
   const push = useCallback((m:Msg)=>setMsgs(p=>[...p,m]),[]);
+  const [percentageInputs, setPercentageInputs] = useState<Record<number, string>>({});
+
 
   const send = useCallback(async(text:string)=>{
     const msg=text.trim(); 
@@ -62,6 +64,15 @@ export default function ChatPanel({data,step,done,pct,sessionId,onUpdates,onStep
     } catch { push({role:"agent",content:"Something went wrong. Please try again."}); }
     finally { setBusy(false); }
   },[busy,data,step,push,onUpdates,onStep,onDone,selectedFiles]);
+
+  // Submits percentage inputs as a formatted message to the AI
+  const submitPercentages = useCallback(() => {
+    const partners = data.partners || [];
+    const values = partners.map((_, i) => percentageInputs[i] || "0");
+    const formatted = values.join(", ");
+    setPercentageInputs({});
+    send(formatted);
+  }, [percentageInputs, data.partners, send]);
 
   const handleFileSelect = async (e: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -216,6 +227,36 @@ export default function ChatPanel({data,step,done,pct,sessionId,onUpdates,onStep
                     }}
                   >
                     Submit Selection
+                  </button>
+                </div>
+              )}
+              {/* Inline Percentage Input Widget — shown on last agent message for contributions/profits */}
+              {m.role === "agent" && i === msgs.length - 1 && !busy && (step === "contributions" || step === "profits") && (
+                <div style={{background:"var(--bg-checkbox)",border:"1px solid var(--border-color)",borderRadius:12,padding:12,marginTop:4,display:"flex",flexDirection:"column",gap:8}}>
+                  <div style={{fontSize:12,color:"var(--accent)",fontWeight:600,marginBottom:2}}>
+                    {step === "contributions" ? "Enter capital % for each partner (must total 100%):" : "Enter profit % for each partner (must total 100%):"}
+                  </div>
+                  {data.partners.map((p, idx) => (
+                    <div key={idx} style={{display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{fontSize:13,color:"var(--text-primary)",flex:1,fontWeight:500}}>{p.salutation} {p.fullName}</span>
+                      <div style={{display:"flex",alignItems:"center",gap:4}}>
+                        <input
+                          type="number" min="0" max="100"
+                          placeholder="%"
+                          value={percentageInputs[idx] ?? ""}
+                          onChange={e => setPercentageInputs(prev => ({...prev, [idx]: e.target.value}))}
+                          style={{width:64,padding:"6px 8px",borderRadius:8,border:"1.5px solid var(--border-input)",background:"var(--bg-input)",color:"var(--text-primary)",fontSize:13,textAlign:"center",fontFamily:"inherit",outline:"none"}}
+                        />
+                        <span style={{fontSize:13,color:"var(--text-muted)"}}>%</span>
+                      </div>
+                    </div>
+                  ))}
+                  <button
+                    style={{padding:"8px 16px",fontSize:13,border:"none",borderRadius:24,background:"var(--accent)",color:"white",fontWeight:600,cursor:"pointer",marginTop:4,alignSelf:"flex-start",fontFamily:"inherit",opacity:busy?0.5:1}}
+                    disabled={busy}
+                    onClick={submitPercentages}
+                  >
+                    Submit Percentages
                   </button>
                 </div>
               )}
