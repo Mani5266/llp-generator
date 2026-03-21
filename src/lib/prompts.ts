@@ -24,7 +24,13 @@ TASK: Extract details for each partner with 100% accuracy.
 5. Age: (Integer: 2026 minus birth year).
 6. Full Address: (One string, copied exactly from the card).
 
-MAPPING: Card 1 -> partners[0], Card 2 -> partners[1], etc.
+MAPPING (VERY IMPORTANT):
+For each Card i (where i starts from 0), you MUST include these exact keys in the "updates" object:
+- "partners[i].fullName": (string)
+- "partners[i].relationDescriptor": (string: "S/O", "D/O", or "W/O")
+- "partners[i].fatherName": (string: The extracted name)
+- "partners[i].age": (string: The calculated age)
+- "partners[i].aadhaarAddress": (string: The raw address from the card)
 
 STRICT RULES:
 - ANTI-HALLUCINATION: If a field (especially Father's Name) is NOT present or legible on a card, you MUST leave it as an empty string (""). NEVER invent, guess, or provide a fake name.
