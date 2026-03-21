@@ -18,27 +18,28 @@ export function buildExtractionPrompt(data: Partial<LLPData>, numFiles: number):
 
 TASK: Extract details for each partner with 100% accuracy.
 1. Salutation: (Mr., Mrs., Ms., Dr.) - Infer from name/gender.
-2. Full Name: (Found on the FRONT. Exactly as printed).
-3. Relation Descriptor: (S/O, D/O, W/O) - Found on the BACK/BOTTOM (e.g., "S/O: Name").
+2. Full Name: (Found on the FRONT. Exactly as printed. Check every character: e.g., 'Jajula' NOT 'Jajala').
+3. Relation Descriptor: (S/O, D/O, W/O) - Found on the BACK/BOTTOM.
 4. Father/Mother/Spouse Name: (Found on the BACK/BOTTOM after S/O, D/O, or W/O. Extract the name ONLY. Remove titles like Mr. or Shri).
 5. Age: (Found on the FRONT as "Year of Birth" or "DOB". Calculate: 2026 minus birth year. Return as a string).
 6. Full Address: (Found on the BACK. One string, copied exactly).
 
 MAPPING (STRICT):
 For each Card i (where i is the 0-based index of the card), you MUST include these EXACT keys in the "updates" object:
-- "partners[i].fullName": (string: Name from front)
-- "partners[i].relationDescriptor": (string: "S/O", "D/O", or "W/O")
-- "partners[i].fatherName": (string: Name after relation descriptor)
-- "partners[i].age": (string: 2026 - birth year)
-- "partners[i].aadhaarAddress": (string: Exact address from back)
+- "partners[i].fullName": (string)
+- "partners[i].relationDescriptor": (string)
+- "partners[i].fatherName": (string)
+- "partners[i].age": (string)
+- "partners[i].aadhaarAddress": (string)
 
-STRICT RULES:
-- ANTI-HALLUCINATION: If "Father's Name" is NOT legible on the card, leave it as "". NEVER guess.
-- NO MIXING: Ensure Card 1 maps to partners[0], Card 2 to partners[1], etc.
-- JSON SAFETY: No unescaped backslashes.
+STRICT ANTI-HALLUCINATION RULES:
+- **NO GUESSING**: If "Father's Name" or "S/O" is NOT explicitly printed on the card, you MUST leave "fatherName" as an empty string (""). 
+- **NO SURNAME INFERENCE**: NEVER invent a father's name by combining the partner's surname with a common name (e.g., if partner is "Jajula Mani", do NOT guess "Jajula Ramulu").
+- **SPELLING ACCURACY**: Pay extreme attention to vowels (a/u/i/o). 'Jajula' is DIFFERENT from 'Jajala'. Copy character-by-character.
+- **EVIDENCE ONLY**: If a field is missing, blurry, or not present, return "". The system will ask the user.
 
 CONVERSATIONAL LOGIC:
-- ALWAYS include the "updates" object with ALL fields found for ALL partners.
+- ALWAYS include the "updates" object with ALL fields found.
 - Use 1-indexed "Partner 1", "Partner 2" in your "message".
 - Use 0-indexed indices (e.g., partners[0]) in the "updates" keys.
 
