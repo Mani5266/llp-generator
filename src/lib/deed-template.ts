@@ -328,8 +328,8 @@ li { margin-bottom: 8px; }
 .witness-block { margin-top: 40px; font-size: 11pt; line-height: 2.2; }
 .page-break { break-before: page; page-break-before: always; height: 0; margin: 0; border: none; }
 @media print {
-  @page { size: portrait; margin: 25mm 20mm; }
-  body { padding: 0; }
+  @page { size: portrait; margin: 0; }
+  body { padding: 30mm 20mm 20mm 20mm; }
   .page-break { display: block; height: 0; page-break-before: always; }
 }
 `;
