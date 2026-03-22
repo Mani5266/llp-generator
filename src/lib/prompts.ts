@@ -33,13 +33,16 @@ For each Card i (where i is the 0-based index of the card), you MUST include the
 - "partners[i].aadhaarAddress": (string)
 
 STRICT ANTI-HALLUCINATION RULES:
-- **RELATION REQUIRED**: ONLY extract a name for "fatherName" if it is physically located immediately after a descriptor like "S/O", "D/O", "W/O", or "C/O".
-- **IGNORE ADDRESS NAMES**: Many Aadhaar addresses contain landmark names or shop names (e.g., "Opposite Ramu Medicals", "Sita Residency"). **NEVER** use these as "fatherName".
-- **NO GUESSING**: If "Father's Name" or a clear relation descriptor is NOT explicitly printed, you MUST leave "fatherName" as an empty string (""). 
+- **DESCRIPTOR MANDATORY**: ONLY extract a name as "fatherName" if it is physically preceded by (S/O, D/O, W/O, or C/O). If those characters are NOT on the card, you MUST return "" for "fatherName".
+- **NO PROXIMITY GUESSING**: Do NOT assume a name found near the address or on the card is the father's name if it lacks the descriptor.
+- **NO SURNAME MATCHING**: NEVER use a name just because it shares a surname with the partner.
+- **IGNORE LANDMARKS**: Aadhaar addresses often contain landmark names (e.g., "Opposite..."). NEVER use these.
+- **ZERO HALLUCINATION**: If you are not 100% certain a name is a Father/Mother/Spouse name based on a descriptor, return "". It is BETTER to ask the user than to provide a wrong name.
 - **NO SELF-PARENTING**: NEVER set "fatherName" equal to "fullName".
-- **NO SURNAME INFERENCE**: NEVER invent a father's name by combining the partner's surname with a common name.
 - **SPELLING ACCURACY**: Copy character-by-character.
-- **EVIDENCE ONLY**: If a field is missing, blurry, or not present, return "". Every character MUST be backed by visual evidence.
+- **EVIDENCE ONLY**: Every character MUST be backed by visual evidence.
+
+CRITICAL: If "fatherName" is "", the system will correctly ask the user. Do NOT try to fill it to be helpful. 
 
 DO NOT PROCEED to address verification if any Father's Name is missing. Return "" and the system will prompt the user.
 
