@@ -136,11 +136,23 @@ export default function LLPApp() {
 
   const dlPDF = async()=>{
     const el = document.getElementById("deedContent");
-    const rawHtml = el ? el.innerHTML : html;
+    const rawHtml = el ? el.innerHTML : (data.manualHtml || html);
     const r = await fetch("/api/download-pdf",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ html: rawHtml, llpName: data.llpName })});
     if (!r.ok){alert("Failed");return;}
     const blob = new Blob([await r.text()],{type:"text/html"});
     window.open(URL.createObjectURL(blob),"_blank");
+  };
+
+  const handleSaveHtml = (newHtml: string) => {
+    setData(prev => ({ ...prev, manualHtml: newHtml }));
+  };
+
+  const handleResetHtml = () => {
+    if (!confirm("Are you sure you want to revert to the auto-generated version? Your manual edits will be lost.")) return;
+    setData(prev => {
+      const { manualHtml, ...rest } = prev;
+      return rest as LLPData;
+    });
   };
 
   const restart=()=>{ setData(defaultData()); setStep("num_partners"); setDone(false); setHtml(""); };
@@ -158,7 +170,16 @@ export default function LLPApp() {
       <div style={{display: mobileTab === "preview" ? "flex" : undefined, flexDirection:"column", height:"100%"}}
            className={mobileTab !== "preview" ? "mobile-hide" : ""}
            id="preview-section">
-        <DocumentPanel html={html} pct={getPct(data)} missing={getMissing(data)} onDocx={dlDocx} onPDF={dlPDF}/>
+        <DocumentPanel 
+          html={data.manualHtml || html} 
+          pct={getPct(data)} 
+          missing={getMissing(data)} 
+          isManual={!!data.manualHtml}
+          onDocx={dlDocx} 
+          onPDF={dlPDF}
+          onSaveHtml={handleSaveHtml}
+          onResetHtml={handleResetHtml}
+        />
       </div>
 
       {/* Mobile Tab Bar */}

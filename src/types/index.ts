@@ -51,6 +51,7 @@ export interface LLPData {
   loansEnabled: boolean;
   loanInterestRate: number;
   arbitrationCity: string;
+  manualHtml?: string; // Persistent manual edits
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────

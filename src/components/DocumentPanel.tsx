@@ -6,11 +6,14 @@ interface Props {
   html: string;
   pct: number;
   missing: string[];
+  isManual?: boolean;
   onDocx: () => Promise<void>;
   onPDF: () => Promise<void>;
+  onSaveHtml?: (html: string) => void;
+  onResetHtml?: () => void;
 }
 
-export default function DocumentPanel({ html, pct, missing, onDocx, onPDF }: Props) {
+export default function DocumentPanel({ html, pct, missing, isManual, onDocx, onPDF, onSaveHtml, onResetHtml }: Props) {
   const [docxBusy, setDocxBusy] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -31,6 +34,13 @@ export default function DocumentPanel({ html, pct, missing, onDocx, onPDF }: Pro
 
   const dlDocx = async () => { setDocxBusy(true); try { await onDocx(); } finally { setDocxBusy(false); } };
   const dlPDF  = async () => { setPdfBusy(true);  try { await onPDF();  } finally { setPdfBusy(false);  } };
+
+  const handleEditToggle = () => {
+    if (isEditing && onSaveHtml && contentRef.current) {
+      onSaveHtml(contentRef.current.innerHTML);
+    }
+    setIsEditing(!isEditing);
+  };
 
   const copy = () => {
     const el = document.getElementById("deedContent");
@@ -53,14 +63,28 @@ export default function DocumentPanel({ html, pct, missing, onDocx, onPDF }: Pro
             <FileText size={16} color="white" />
           </div>
           <div style={{ minWidth:0 }}>
-            <div style={{ fontSize:14, fontWeight:700, color:"var(--text-primary)", letterSpacing:"-0.3px", whiteSpace:"nowrap" }}>Document Preview</div>
-            <div style={{ fontSize:11, color:"var(--text-muted)", marginTop:1 }}>Live LLP Agreement Draft</div>
+            <div style={{ fontSize:14, fontWeight:700, color:"var(--text-primary)", letterSpacing:"-0.3px", whiteSpace:"nowrap" }}>Document Preview {isManual && <span style={{color:"#f59e0b", fontSize:10, fontWeight:600}}>(Manual Mode)</span>}</div>
+            <div style={{ fontSize:11, color:"var(--text-muted)", marginTop:1 }}>{isManual ? "Using your manual edits" : "Live LLP Agreement Draft"}</div>
           </div>
         </div>
 
         {/* Right: action buttons */}
         <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0, flexWrap:"wrap" }}>
           
+          {isManual && !isEditing && onResetHtml && (
+             <button
+              onClick={onResetHtml}
+              title="Revert to auto-generated version"
+              style={{
+                display:"flex", alignItems:"center", gap:6, padding:"6px 11px",
+                fontSize:12, fontWeight:600, borderRadius:8, cursor:"pointer", transition:"all .15s",
+                background:"transparent", color:"var(--text-faint)", border:"1px dashed var(--border-color)",
+              }}
+            >
+              Reset to Auto
+            </button>
+          )}
+
           {missing.length > 0 && (
             <button
               onClick={() => setShowMissing(v => !v)}
@@ -79,17 +103,18 @@ export default function DocumentPanel({ html, pct, missing, onDocx, onPDF }: Pro
           )}
 
           <button
-            onClick={() => setIsEditing(!isEditing)}
+            onClick={handleEditToggle}
             style={{
               display:"flex", alignItems:"center", gap:6, padding:"6px 11px",
               fontSize:12, fontWeight:600, borderRadius:8, cursor:"pointer", transition:"all .15s",
-              background: isEditing ? "#fef3c7" : "var(--bg-input)",
-              color: isEditing ? "#92400e" : "var(--text-secondary)",
-              border: `1px solid ${isEditing ? "#fcd34d" : "var(--border-color)"}`,
+              background: isEditing ? "#10b981" : "var(--bg-input)",
+              color: isEditing ? "white" : "var(--text-secondary)",
+              border: `1px solid ${isEditing ? "#059669" : "var(--border-color)"}`,
+              animation: isEditing ? "pulse 2s infinite" : "none"
             }}
           >
-            {isEditing ? <PencilOff size={13} /> : <Pencil size={13} />}
-            {isEditing ? "Editing" : "Edit"}
+            {isEditing ? <CheckCircle size={13} /> : <Pencil size={13} />}
+            {isEditing ? "Save Changes" : "Edit"}
           </button>
 
           <button
