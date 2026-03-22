@@ -1,5 +1,5 @@
 export type Salutation = "Mr." | "Mrs." | "Ms." | "Dr.";
-export type RelationDescriptor = "S/O" | "D/O" | "W/O";
+export type RelationDescriptor = "S/O" | "D/O" | "W/O" | "C/O";
 
 export interface PartnerAddress {
   doorNo: string; area: string; city: string;

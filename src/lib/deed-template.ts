@@ -299,7 +299,6 @@ Signature :
 <p><strong>The Business Incidental Or Ancillary To The Attainment Of The Main Business Are:</strong></p>
 <p>To achieve its main business, the LLP will undertake ancillary works including the acquisition of specialized manufacturing infrastructure and extrusion machinery, the maintenance of climate-controlled warehousing, the procurement of mandatory FSSAI and BIS certifications, the establishment of R&amp;D laboratories to secure patents and proprietary formulations, the management of industrial financing and bank guarantees for government tendering, the operation of domestic and international logistics networks for import and export, and the formation of strategic joint ventures and technical collaborations to enhance nutritional food security.</p>
 
-<div class="page-break"></div>
 <h3 class="sched-title">SCHEDULE 2</h3>
 <p>Matters To Be Decided By A Resolution Passed By A Majority In Share Holding Of The Partners:</p>
 <ol type="a">

@@ -19,8 +19,8 @@ export function buildExtractionPrompt(data: Partial<LLPData>, numFiles: number):
 TASK: Extract details for each partner with 100% accuracy.
 1. Salutation: (Mr., Mrs., Ms., Dr.) - Infer from name/gender.
 2. Full Name: (Found on the FRONT. Exactly as printed. Check every character: e.g., 'Jajula' NOT 'Jajala').
-3. Relation Descriptor: (S/O, D/O, W/O) - Found on the BACK/BOTTOM.
-4. Father/Mother/Spouse Name: (Found on the BACK/BOTTOM after S/O, D/O, or W/O. Extract the name ONLY. Remove titles like Mr. or Shri).
+3. Relation Descriptor: (S/O, D/O, W/O, C/O) - Found on the BACK/BOTTOM.
+4. Father/Mother/Spouse Name: (Found on the BACK/BOTTOM after S/O, D/O, W/O, or C/O. Extract the name ONLY. Remove titles like Mr. or Shri).
 5. Age: (Found on the FRONT as "Year of Birth" or "DOB". Calculate: 2026 minus birth year. Return as a string).
 6. Full Address: (Found on the BACK. One string, copied exactly).
 
@@ -33,10 +33,12 @@ For each Card i (where i is the 0-based index of the card), you MUST include the
 - "partners[i].aadhaarAddress": (string)
 
 STRICT ANTI-HALLUCINATION RULES:
-- **NO GUESSING**: If "Father's Name" or "S/O" is NOT explicitly printed on the card, you MUST leave "fatherName" as an empty string (""). 
-- **NO SELF-PARENTING**: NEVER set "fatherName" equal to "fullName". If you don't see a *different* name for the father, leave "fatherName" as "".
-- **NO SURNAME INFERENCE**: NEVER invent a father's name by combining the partner's surname with a common name (e.g., if partner is "Jajula Mani", do NOT guess "Jajula Ramulu").
-- **SPELLING ACCURACY**: Pay extreme attention to vowels (a/u/i/o). 'Jajula' is DIFFERENT from 'Jajala'. Copy character-by-character.
+- **RELATION REQUIRED**: ONLY extract a name for "fatherName" if it is physically located immediately after a descriptor like "S/O", "D/O", "W/O", or "C/O".
+- **IGNORE ADDRESS NAMES**: Many Aadhaar addresses contain landmark names or shop names (e.g., "Opposite Ramu Medicals", "Sita Residency"). **NEVER** use these as "fatherName".
+- **NO GUESSING**: If "Father's Name" or a clear relation descriptor is NOT explicitly printed, you MUST leave "fatherName" as an empty string (""). 
+- **NO SELF-PARENTING**: NEVER set "fatherName" equal to "fullName".
+- **NO SURNAME INFERENCE**: NEVER invent a father's name by combining the partner's surname with a common name.
+- **SPELLING ACCURACY**: Copy character-by-character.
 - **EVIDENCE ONLY**: If a field is missing, blurry, or not present, return "". Every character MUST be backed by visual evidence.
 
 DO NOT PROCEED to address verification if any Father's Name is missing. Return "" and the system will prompt the user.
