@@ -1,7 +1,12 @@
-# dependencies
-/node_modules
+# depend.env.local
+.next/
+node_modules/
+nul
 /.pnp
 .pnp.js
+
+# dependencies
+
 
 # testing
 /coverage
