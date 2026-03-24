@@ -29,8 +29,8 @@ export default function ThemeProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  // Prevent flash of wrong theme
-  if (!mounted) return null;
+  // We no longer return null here to avoid hydration mismatch.
+  // The theme will be applied in the useEffect on mount.
 
   return (
     <ThemeContext.Provider value={{ theme, toggle }}>

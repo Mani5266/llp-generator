@@ -1,11 +1,23 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { LLPData, defaultData, blankPartner, getPct, getMissing, toTitleCase } from "@/types";
+import { LLPData, defaultData, blankPartner, getPct, getMissing, toTitleCase, calculateAge, isSelfParenting } from "@/types";
+import { renderDeed } from "@/lib/deed-template";
 import ChatPanel from "./ChatPanel";
 import DocumentPanel from "./DocumentPanel";
+import { getAgreement, createAgreement, updateAgreement } from "@/lib/actions/agreements";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "./AuthProvider";
 import { useRouter } from "next/navigation";
+
+/** Helper to build auth headers from the current Supabase session */
+async function authHeaders(): Promise<Record<string,string>> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+  };
+}
 
 function setPath(obj: Record<string,unknown>, path: string, val: unknown) {
   const parts = path.replace(/\[(\w+)\]/g, ".$1").split(".");
@@ -33,34 +45,32 @@ export default function LLPApp() {
   const isInitialMount = useRef(true);
   const [mobileTab, setMobileTab] = useState<"chat" | "preview">("chat");
 
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
   useEffect(() => {
     if (!user) return;
     const params = new URLSearchParams(window.location.search);
     const id = params.get("id");
     if (id) {
       setSessionId(id);
-      supabase.from("agreements").select("*").eq("id", id).eq("user_id", user.id).single().then(({ data: dbData, error }) => {
+      getAgreement(id, user.id).then(({ data: dbData, error }: { data: any, error: string | null }) => {
         if (!error && dbData && dbData.data && Object.keys(dbData.data).length > 0) {
           setData(dbData.data as LLPData);
           setStep(dbData.step);
           setDone(dbData.is_done);
-        } else if (error) {
-          supabase.from("agreements").select("*").eq("id", id).single().then(({ data: fallbackData, error: fallbackError }) => {
-            if (!fallbackError && fallbackData && fallbackData.data && Object.keys(fallbackData.data).length > 0) {
-              setData(fallbackData.data as LLPData);
-              setStep(fallbackData.step);
-              setDone(fallbackData.is_done);
-            } else {
-              router.replace("/dashboard");
-            }
-          });
+        } else {
+          // No matching agreement found for this user — redirect to dashboard
+          setErrorMsg(error || "Agreement not found");
+          router.replace("/dashboard");
         }
       });
     } else {
-      supabase.from("agreements").insert([{ data: defaultData(), step: "num_partners", is_done: false, user_id: user.id }]).select().single().then(({ data: dbData, error }) => {
+      createAgreement(user.id, defaultData()).then(({ data: dbData, error }: { data: any, error: string | null }) => {
         if (!error && dbData) {
           setSessionId(dbData.id);
           window.history.replaceState({}, "", `?id=${dbData.id}`);
+        } else {
+          setErrorMsg(error || "Failed to create agreement");
         }
       });
     }
@@ -70,21 +80,22 @@ export default function LLPApp() {
     if (isInitialMount.current) { isInitialMount.current = false; return; }
     if (!sessionId) return;
     const saveTimer = setTimeout(() => {
-      supabase.from("agreements").update({
-        data, step, is_done: done, updated_at: new Date().toISOString()
-      }).eq("id", sessionId).then();
+      updateAgreement(sessionId, { data, step, is_done: done }).then(({ error }: { error: string | null }) => {
+        if (error) {
+          console.error("Auto-save failed:", error);
+        }
+      });
     }, 1000);
     return () => clearTimeout(saveTimer);
   }, [data, step, done, sessionId]);
 
   useEffect(()=>{
     if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(async()=>{
+    timer.current = setTimeout(()=>{
       try {
-        const r = await fetch("/api/render-deed",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});
-        if (r.ok) { const j = await r.json(); setHtml(j.html); }
-      } catch {}
-    }, 400);
+        setHtml(renderDeed(data, "preview"));
+      } catch (err) { console.error("Render deed error:", err); }
+    }, 100);
     return ()=>{ if(timer.current) clearTimeout(timer.current); };
   }, [data]);
 
@@ -92,6 +103,17 @@ export default function LLPApp() {
     setData(prev=>{
       const next = JSON.parse(JSON.stringify(prev)) as LLPData & Record<string,unknown>;
       for (const [k,v] of Object.entries(updates)) setPath(next,k,v);
+      // Auto-calculate age from DOB for each partner
+      next.partners.forEach((p) => {
+        if (p.dob) {
+          const computed = calculateAge(p.dob);
+          if (computed) p.age = computed;
+        }
+        // Clear hallucinated father names (name too similar to partner's own name)
+        if (p.fullName && p.fatherName && isSelfParenting(p.fullName, p.fatherName)) {
+          p.fatherName = "";
+        }
+      });
       if (next.llpName) next.llpName = toTitleCase(String(next.llpName));
       if (next.registeredAddress?.district) {
         next.executionCity = next.registeredAddress.district;
@@ -127,20 +149,29 @@ export default function LLPApp() {
   },[]);
 
   const dlDocx = async()=>{
-    const r = await fetch("/api/download-docx",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});
+    const hdrs = await authHeaders();
+    const r = await fetch("/api/download-docx",{method:"POST",headers:hdrs,body:JSON.stringify(data)});
     if (!r.ok){alert("Download failed");return;}
     const blob = await r.blob();
-    const a = document.createElement("a"); a.href=URL.createObjectURL(blob);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href=url;
     a.download=`LLP_Agreement_${(data.llpName||"draft").replace(/\s+/g,"_")}.docx`; a.click();
+    URL.revokeObjectURL(url);
   };
 
   const dlPDF = async()=>{
     const el = document.getElementById("deedContent");
     const rawHtml = el ? el.innerHTML : (data.manualHtml || html);
-    const r = await fetch("/api/download-pdf",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ html: rawHtml, llpName: data.llpName })});
+    const hdrs = await authHeaders();
+    const r = await fetch("/api/download-pdf",{method:"POST",headers:hdrs,body:JSON.stringify({ html: rawHtml, llpName: data.llpName })});
     if (!r.ok){alert("Failed");return;}
     const blob = new Blob([await r.text()],{type:"text/html"});
-    window.open(URL.createObjectURL(blob),"_blank");
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `LLP_Agreement_${(data.llpName || "draft").replace(/\s+/g, "_")}.pdf.html`; // Note: It's actually HTML that prints to PDF or similar
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
   };
 
   const handleSaveHtml = (newHtml: string) => {
@@ -159,13 +190,23 @@ export default function LLPApp() {
 
   return (
     <div className="mobile-stack" style={{display:"grid",gridTemplateColumns:"420px 1fr",height:"100vh",overflow:"hidden"}}>
+      {errorMsg && (
+        <div style={{
+          position: "fixed", top: 20, right: 20, background: "#fee2e2", color: "#b91c1c", 
+          padding: "12px 20px", borderRadius: "8px", border: "1px solid #fca5a5", zIndex: 100,
+          boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)"
+        }}>
+          {errorMsg}
+          <button onClick={() => setErrorMsg(null)} style={{ marginLeft: 10, fontWeight: "bold" }}>×</button>
+        </div>
+      )}
       <div style={{display: mobileTab === "chat" ? "flex" : "none", flexDirection:"column", height:"100%"}}
-           className={typeof window !== "undefined" && window.innerWidth <= 768 ? "" : ""}
            id="chat-section">
         <ChatPanel data={data} step={step} done={done} pct={getPct(data)} sessionId={sessionId}
           onUpdates={applyUpdates} onStep={setStep} onDone={()=>setDone(true)} onRestart={restart}
           onRestore={(d, s, dn) => { setData(d); setStep(s); setDone(dn); }}
-          onBackToDashboard={() => router.push("/dashboard")} />
+          onBackToDashboard={() => router.push("/dashboard")}
+          getAuthHeaders={authHeaders} />
       </div>
       <div style={{display: mobileTab === "preview" ? "flex" : undefined, flexDirection:"column", height:"100%"}}
            className={mobileTab !== "preview" ? "mobile-hide" : ""}
@@ -183,16 +224,29 @@ export default function LLPApp() {
       </div>
 
       {/* Mobile Tab Bar */}
-      <div className="mobile-tab-bar" style={{position:"fixed",bottom:0,left:0,right:0,zIndex:50}}>
+      <div className="mobile-tab-bar" style={{
+        position:"fixed",bottom:0,left:0,right:0,zIndex:50,
+        backdropFilter:"blur(12px) saturate(180%)",
+        WebkitBackdropFilter:"blur(12px) saturate(180%)",
+        background:"rgba(11, 15, 25, 0.92)",
+        borderTop:"1px solid rgba(255, 255, 255, 0.06)",
+        padding:"6px 8px",
+        gap:6,
+      }}>
         <button
           className="mobile-tab"
           onClick={() => setMobileTab("chat")}
           style={{
-            background: mobileTab === "chat" ? "var(--accent)" : "var(--bg-header)",
-            color: mobileTab === "chat" ? "#fff" : "var(--text-faint)",
+            background: mobileTab === "chat" ? "var(--accent-gradient)" : "transparent",
+            color: mobileTab === "chat" ? "#fff" : "rgba(148, 163, 184, 0.7)",
+            borderRadius:"var(--radius-md)",
+            fontWeight: mobileTab === "chat" ? 700 : 600,
+            fontSize: 12,
+            letterSpacing: "-0.2px",
+            boxShadow: mobileTab === "chat" ? "0 2px 8px rgba(13, 150, 104, 0.25)" : "none",
           }}
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
           </svg>
           Chat
@@ -201,11 +255,16 @@ export default function LLPApp() {
           className="mobile-tab"
           onClick={() => setMobileTab("preview")}
           style={{
-            background: mobileTab === "preview" ? "var(--accent)" : "var(--bg-header)",
-            color: mobileTab === "preview" ? "#fff" : "var(--text-faint)",
+            background: mobileTab === "preview" ? "var(--accent-gradient)" : "transparent",
+            color: mobileTab === "preview" ? "#fff" : "rgba(148, 163, 184, 0.7)",
+            borderRadius:"var(--radius-md)",
+            fontWeight: mobileTab === "preview" ? 700 : 600,
+            fontSize: 12,
+            letterSpacing: "-0.2px",
+            boxShadow: mobileTab === "preview" ? "0 2px 8px rgba(13, 150, 104, 0.25)" : "none",
           }}
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
             <polyline points="14 2 14 8 20 8"/>
           </svg>
