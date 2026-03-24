@@ -21,7 +21,7 @@ TASK: Extract details for each partner with 100% accuracy.
 2. Full Name: (Found on the FRONT. Exactly as printed. Check every character: e.g., 'Jajula' NOT 'Jajala').
 3. Relation Descriptor: (S/O, D/O, W/O, C/O) - Found on the BACK/BOTTOM.
 4. Father/Mother/Spouse Name: (Found on the BACK/BOTTOM after S/O, D/O, W/O, or C/O. Extract the name ONLY. Remove titles like Mr. or Shri).
-5. Age: (Found on the FRONT as "Year of Birth" or "DOB". Calculate: 2026 minus birth year. Return as a string).
+5. DOB: (Found on the FRONT as "Year of Birth" or "DOB" or "Date of Birth". Extract EXACTLY as printed on the card - e.g. "15/06/1997" or "1997". Return the raw value as a string. Do NOT calculate age yourself).
 6. Full Address: (Found on the BACK. One string, copied exactly).
 
 MAPPING (STRICT):
@@ -29,20 +29,21 @@ For each Card i (where i is the 0-based index of the card), you MUST include the
 - "partners[i].fullName": (string)
 - "partners[i].relationDescriptor": (string)
 - "partners[i].fatherName": (string)
-- "partners[i].age": (string)
+- "partners[i].dob": (string - raw DOB or Year of Birth exactly as printed on card, e.g. "15/06/1997" or "1997")
 - "partners[i].aadhaarAddress": (string)
 
 STRICT ANTI-HALLUCINATION RULES:
-- **DESCRIPTOR MANDATORY**: ONLY extract a name as "fatherName" if it is physically preceded by (S/O, D/O, W/O, or C/O). If those characters are NOT on the card, you MUST return "" for "fatherName".
+- **DESCRIPTOR MANDATORY**: ONLY extract a name as "fatherName" if the text "S/O" or "D/O" or "W/O" or "C/O" is PHYSICALLY VISIBLE on the card image, followed by the name. If you cannot see these exact characters on the card, you MUST return "" for "fatherName".
 - **NO PROXIMITY GUESSING**: Do NOT assume a name found near the address or on the card is the father's name if it lacks the descriptor.
 - **NO SURNAME MATCHING**: NEVER use a name just because it shares a surname with the partner.
 - **IGNORE LANDMARKS**: Aadhaar addresses often contain landmark names (e.g., "Opposite..."). NEVER use these.
 - **ZERO HALLUCINATION**: If you are not 100% certain a name is a Father/Mother/Spouse name based on a descriptor, return "". It is BETTER to ask the user than to provide a wrong name.
-- **NO SELF-PARENTING**: NEVER set "fatherName" equal to "fullName".
-- **SPELLING ACCURACY**: Copy character-by-character.
-- **EVIDENCE ONLY**: Every character MUST be backed by visual evidence.
+- **NO SELF-PARENTING**: NEVER set "fatherName" equal to or similar to "fullName". If the father name looks like a variation of the partner's own name (same or similar first/last name, close spelling), return "". Examples of violations: fullName="JAJULA MANI" and fatherName="JAJALA MANI" — these are too similar, return "".
+- **SPELLING ACCURACY**: Copy character-by-character from the card.
+- **EVIDENCE ONLY**: Every single character in "fatherName" MUST be visually present on the card after a descriptor (S/O, D/O, W/O, C/O). If you cannot point to the exact location on the card where the father's name appears after a descriptor, return "".
+- **WHEN IN DOUBT, RETURN EMPTY**: It is always better to return "" and let the system ask the user, than to guess or hallucinate a name. There is ZERO penalty for returning "".
 
-CRITICAL: If "fatherName" is "", the system will correctly ask the user. Do NOT try to fill it to be helpful. 
+CRITICAL: If "fatherName" is "", the system will correctly ask the user. Do NOT try to fill it to be helpful. A wrong father name in a legal document is far worse than a missing one.
 
 DO NOT PROCEED to address verification if any Father's Name is missing. Return "" and the system will prompt the user.
 
@@ -51,11 +52,11 @@ CONVERSATIONAL LOGIC:
 - Use 1-indexed "Partner 1", "Partner 2" in your "message".
 - Use 0-indexed indices (e.g., partners[0]) in the "updates" keys.
 
-1. If Name, Father's Name, AND Age are FOUND for ALL partners:
+1. If Name, Father's Name, AND DOB are FOUND for ALL partners:
    - Message: "I've extracted details for all ${numFiles} partners and mapped them to the document. Starting with Partner 1 ([name]), is this their residential address? [raw address]"
    - nextStep: "partner_0"
    - suggestedOptions: ["Yes: Correct", "No: I'll type it"]
-2. If ANY basic detail (FullName/FatherName/Age) is MISSING:
+2. If ANY basic detail (FullName/FatherName/DOB) is MISSING:
    - Message: "I've mapped the extracted details. However, Partner [1-indexed number] is missing their [Field Name]. Please provide it."
    - nextStep: "partner_0"
    - suggestedOptions: []
@@ -70,17 +71,16 @@ export function buildPrompt(userMsg: string, data: Partial<LLPData>, step: strin
   const partners: Partner[] = (data.partners || []) as Partner[];
   const numPartners = data.numPartners || partners.length || 2;
 
-  const allExtracted = partners.length > 0 && partners.every(p => p.fullName && p.fatherName && p.age);
+  const allExtracted = partners.length > 0 && partners.every(p => p.fullName && p.fatherName && (p.age || p.dob));
   const nextIdx = allExtracted ? partners.findIndex(p => !p.address?.pin) : -1;
   const targetIdx = nextIdx !== -1 ? nextIdx : -1;
   const targetPartner = targetIdx >= 0 ? partners[targetIdx] : null;
   const nextPartner = targetIdx >= 0 ? partners[targetIdx + 1] : null;
 
-  const missingPartnerIdx = partners.findIndex(p => !p.fullName || !p.fatherName || !p.age);
+  const missingPartnerIdx = partners.findIndex(p => !p.fullName || !p.fatherName || (!p.age && !p.dob));
   const mp = missingPartnerIdx !== -1 ? partners[missingPartnerIdx] : null;
 
   const allAddressesConfirmed = allExtracted && partners.every(p => p.address?.pin);
-  const designatedConfirmed = partners.some(p => p.isDesignatedPartner);
 
   let addressSection = "";
   if (step === "designated_partners") {
@@ -119,8 +119,8 @@ IF the user HAS submitted a checkbox selection (message contains partner names o
 ${JSON.stringify(exampleUpdates, null, 2)}`;
 
   } else if (mp) {
-    const missingField = !mp.fullName ? "Full Name" : (!mp.fatherName ? "Father's Name" : "Age");
-    const fieldKey = !mp.fullName ? "fullName" : (!mp.fatherName ? "fatherName" : "age");
+    const missingField = !mp.fullName ? "Full Name" : (!mp.fatherName ? "Father's Name" : "Date of Birth");
+    const fieldKey = !mp.fullName ? "fullName" : (!mp.fatherName ? "fatherName" : "dob");
     
     addressSection = `
 ## CURRENT TASK: Collect Missing Basic Details for Partner ${missingPartnerIdx + 1}
@@ -173,12 +173,6 @@ IF user says "No":
 IF user typed a custom address:
 - Parse their text into the same address fields above
 ${isLastPartner ? `- nextStep = "designated_partners", suggestedCheckboxes = ${JSON.stringify(partnerNamesForCheckbox)}, message asks about designated partners` : `- Ask about Partner ${targetIdx + 2}`}`;
-  } else if (allAddressesConfirmed && !designatedConfirmed) {
-    addressSection = `
-## CURRENT TASK: Ask Designated Partners
-All addresses confirmed. Now ask who the designated partners are.
-Set nextStep = "designated_partners".
-Use suggestedCheckboxes with all partner names.`;
   } else {
     addressSection = `Identify if any partners are completely missing. If so, ask the user to attach all ${numPartners} Aadhaar cards using the 📎 button. Currently ${partners.filter(p=>p.fullName).length} partners have names.`;
   }
@@ -324,7 +318,7 @@ IF user's input is "Yes" (exactly or similar):
   - suggestedOptions: ["None / No"]
 
 ELSE IF user's input is "No", "None", or "No, continue":
-  - updates: { "otherPoints": "" }
+  - updates: { "otherPoints": "None" }
   - isComplete: true
   - Message: "Got it! No additional points added. Your LLP Agreement is now 100% complete and ready for download!"
   - suggestedOptions: []

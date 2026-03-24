@@ -16,11 +16,11 @@ export default function Home() {
     return (
       <div style={{
         minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
-        background: "#f4f6f9",
+        background: "var(--bg-chat, #f4f6f9)",
       }}>
         <div style={{
-          width: 40, height: 40, border: "3px solid #e2e8f0",
-          borderTopColor: "#1a9b6c", borderRadius: "50%", animation: "spin .8s linear infinite",
+          width: 40, height: 40, border: "3px solid var(--border-color, #e2e8f0)",
+          borderTopColor: "var(--accent, #1a9b6c)", borderRadius: "50%", animation: "spin .8s linear infinite",
         }} />
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>

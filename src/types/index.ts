@@ -13,6 +13,7 @@ export interface Partner {
   relationDescriptor: RelationDescriptor;
   fatherSalutation: Salutation;
   fatherName: string;
+  dob: string;           // Raw DOB extracted from Aadhaar (DD/MM/YYYY or YYYY)
   age: string;
   address: PartnerAddress;
   aadhaarAddress?: string; // Raw extracted address
@@ -56,6 +57,100 @@ export interface LLPData {
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
+/**
+ * Check if two names are suspiciously similar (likely hallucination).
+ * Returns true if names are too similar and fatherName should be cleared.
+ */
+export function isSelfParenting(fullName: string, fatherName: string): boolean {
+  if (!fullName || !fatherName) return false;
+  const normalize = (s: string) => s.toLowerCase().replace(/[^a-z\s]/g, "").replace(/\s+/g, " ").trim();
+  const a = normalize(fullName);
+  const b = normalize(fatherName);
+  
+  // Exact match
+  if (a === b) return true;
+  
+  // Check if names share most words (e.g., "JAJULA MANI" vs "JAJALA MANI")
+  const wordsA = a.split(" ");
+  const wordsB = b.split(" ");
+  
+  // If one name is a subset of the other
+  if (wordsA.every(w => b.includes(w)) || wordsB.every(w => a.includes(w))) return true;
+  
+  // Check edit distance on each word pair - if most words are within 1-2 characters of each other
+  if (wordsA.length === wordsB.length && wordsA.length > 0) {
+    let similarWords = 0;
+    for (let i = 0; i < wordsA.length; i++) {
+      if (levenshtein(wordsA[i], wordsB[i]) <= 2) similarWords++;
+    }
+    if (similarWords === wordsA.length) return true;
+  }
+  
+  return false;
+}
+
+/** Simple Levenshtein distance */
+function levenshtein(a: string, b: string): number {
+  const m = a.length, n = b.length;
+  const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1]
+        ? dp[i - 1][j - 1]
+        : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+    }
+  }
+  return dp[m][n];
+}
+
+/** Calculate age from DOB string. Supports DD/MM/YYYY, YYYY, or YYYY-MM-DD formats. */
+export function calculateAge(dob: string): string {
+  if (!dob) return "";
+  const trimmed = dob.trim();
+  const today = new Date();
+  
+  // Try DD/MM/YYYY format (common on Aadhaar cards)
+  const ddmmyyyy = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (ddmmyyyy) {
+    const day = parseInt(ddmmyyyy[1], 10);
+    const month = parseInt(ddmmyyyy[2], 10) - 1; // JS months are 0-based
+    const year = parseInt(ddmmyyyy[3], 10);
+    const birthDate = new Date(year, month, day);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age > 0 && age <= 120 ? String(age) : "";
+  }
+  
+  // Try YYYY-MM-DD format (ISO)
+  const isoFormat = trimmed.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+  if (isoFormat) {
+    const year = parseInt(isoFormat[1], 10);
+    const month = parseInt(isoFormat[2], 10) - 1;
+    const day = parseInt(isoFormat[3], 10);
+    const birthDate = new Date(year, month, day);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age > 0 && age <= 120 ? String(age) : "";
+  }
+  
+  // Try plain year (YYYY)
+  const yearOnly = trimmed.match(/^(\d{4})$/);
+  if (yearOnly) {
+    const age = today.getFullYear() - parseInt(yearOnly[1], 10);
+    return age > 0 && age <= 120 ? String(age) : "";
+  }
+  
+  return "";
+}
+
 export function numWords(n: number): string {
   const o = ["","One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten","Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen"];
   const t = ["","","Twenty","Thirty","Forty","Fifty","Sixty","Seventy","Eighty","Ninety"];
@@ -69,9 +164,14 @@ export function numWords(n: number): string {
   return o[n];
 }
 export function fmtINR(n: number) { return Math.round(n).toLocaleString("en-IN"); }
+const PRESERVE_ACRONYMS = new Set(["LLP","IT","CA","HR","PVT","LTD","USA","UK","UAE","GST","PAN","TAN","CIN","DPIN","ROC","MCA","FEMA","NRI","OCI","IEC","MSME","ISO","BIS","FSSAI","API","ERP","AI","ML"]);
 export function toTitleCase(s: string) {
   if (!s) return "";
-  return s.toLowerCase().split(' ').map(w => w === "llp" ? "LLP" : w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  return s.split(' ').map(w => {
+    const upper = w.toUpperCase();
+    if (PRESERVE_ACRONYMS.has(upper)) return upper;
+    return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+  }).join(' ');
 }
 export function ordinalParty(i: number) {
   return (["First","Second","Third","Fourth","Fifth","Sixth","Seventh","Eighth","Ninth","Tenth"][i]??`${i+1}th`)+" Party";
@@ -96,7 +196,7 @@ export function fmtRegAddr(a: RegisteredAddress) {
 }
 export function blankPartner(i: number): Partner {
   return { index:i, salutation:"Mr.", fullName:"", relationDescriptor:"S/O", fatherSalutation:"Mr.",
-    fatherName:"", age:"", address:{doorNo:"",area:"",city:"",district:"",state:"",pin:""},
+    fatherName:"", dob:"", age:"", address:{doorNo:"",area:"",city:"",district:"",state:"",pin:""},
     aadhaarAddress: "",
     isManagingPartner:i===0, isBankAuthorised:i===0, isDesignatedPartner:i<2 };
 }
@@ -125,7 +225,7 @@ export function getMissing(d: LLPData): string[] {
   d.partners.forEach((p,i)=>{
     if (!p.fullName) m.push(`Partner ${i+1} Name`);
     if (!p.fatherName) m.push(`Partner ${i+1} Father Name`);
-    if (!p.age) m.push(`Partner ${i+1} Age`);
+    if (!p.age && !p.dob) m.push(`Partner ${i+1} Age/DOB`);
     if (!p.address || fmtPartnerAddr(p.address).length < 10) m.push(`Partner ${i+1} Address`);
   });
   if (d.partners.filter(p=>p.isDesignatedPartner).length < 2) m.push("Min 2 Designated Partners");
@@ -141,13 +241,13 @@ export function getPct(d: LLPData): number {
   if (d.llpName) done++;
   if (d.executionDate) done++;
   if (d.registeredAddress?.doorNo) done++;
-  if (d.partners.length > 0 && d.partners.every(p => p.fullName && p.fatherName && p.age)) done++;
+  if (d.partners.length > 0 && d.partners.every(p => p.fullName && p.fatherName && (p.age || p.dob))) done++;
   if (d.totalCapital>0) done++;
   if (Math.abs(d.contributions.reduce((s,c)=>s+(c.percentage||0),0)-100)<0.1) done++;
   if (Math.abs(d.profits.reduce((s,p)=>s+(p.percentage||0),0)-100)<0.1) done++;
   if (d.businessObjectives) done++;
   if (d.bankAuthority) done++;
   if (d.arbitrationCity) done++;
-  if (d.otherPoints !== undefined) done++;
+  if (d.otherPoints !== undefined && d.otherPoints !== "") done++;
   return Math.round(done/12*100);
 }

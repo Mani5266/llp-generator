@@ -114,7 +114,7 @@ ${partnerIntros}
 
 ${whereas}
 
-<p>NOW The First &amp; Second parties are interested in forming a Limited Liability Partnership under the Limited Liability Partnership Act 2008 and that they intend to write down the terms and conditions of the said formation and</p>
+<p>NOW The parties hereto are interested in forming a Limited Liability Partnership under the Limited Liability Partnership Act 2008 and that they intend to write down the terms and conditions of the said formation and</p>
 
 <p><strong>IT IS HEREBY AGREED BY AND BETWEEN THE PARTIES HERETO AS FOLLOWS:</strong></p>
 
@@ -159,12 +159,12 @@ ${whereas}
 <p>If the deceased Partner's heir(s) choose not to join the ${LLP}:</p>
 <ol type="a">
 <li>The surviving Partner may purchase the deceased Partner's interest at FMV certified by an independent CA.</li>
-<li>Heirs shall not automatically become Partners unless both Partners agree unanimously in writing.</li>
+<li>Heirs shall not automatically become Partners unless all Partners agree unanimously in writing.</li>
 </ol>
 
 <h3 class="sec">Transfer of Partnership Interest</h3>
 <ol type="a">
-<li>A Partner may not assign, transfer, mortgage, or otherwise dispose of his/her share without unanimous written consent of both Partners.</li>
+<li>A Partner may not assign, transfer, mortgage, or otherwise dispose of his/her share without unanimous written consent of all Partners.</li>
 <li>In case any of the Partners of the ${LLP} desires to transfer or assign his interest or shares in the ${LLP} he/she has to offer the same to the remaining partners or any other by giving 15 days prior notice to the ${LLP}.</li>
 <li>The remaining Partner shall always have the Right of First Refusal (ROFR).</li>
 </ol>
@@ -206,7 +206,7 @@ ${whereas}
 
 <h3 class="sec">Duties of Designated Partner</h3>
 <ul>
-<li>The Authorised representative of First &amp; Second shall act as the Designated Partner of the ${LLP} in terms of the requirement of the Limited Liability Partnership Act, 2008.</li>
+<li>The Authorised representatives shall act as the Designated Partners of the ${LLP} in terms of the requirement of the Limited Liability Partnership Act, 2008.</li>
 <li>The Designated Partners shall be responsible for the doing of all acts, matters and things as are required to be done by the limited liability partnership in respect of compliance of the provisions of this Act including filing of any document, return, statement and the like report pursuant to the provisions of Limited Liability Partnership Act, 2008.</li>
 <li>The Designated Partners shall be responsible for the doing of all acts arising out of this agreement.</li>
 <li>The ${LLP} shall pay such remuneration to the Designated Partner as may be decided by the majority of the Partners, for rendering his services as such.</li>
@@ -253,9 +253,9 @@ ${powers}
 
 ${data.loansEnabled ? `
 <h3 class="sec">Loans from LLP to Partners</h3>
-<p>The LLP may extend loans to Partners at an interest rate of <strong>${data.loanInterestRate || 6}%</strong> per annum.</p>
+<p>The LLP may extend loans to Partners at an interest rate of <strong>${data.loanInterestRate || 12}%</strong> per annum.</p>
 <ul>
-<li>Must be approved in writing by both Partners.</li>
+<li>Must be approved in writing by all Partners.</li>
 <li>Repayment schedule must be documented.</li>
 <li>Reflected properly in LLP accounts.</li>
 <li>Partners may not take interest-free loans unless unanimously approved.</li>
@@ -297,7 +297,10 @@ Signature :
 <p class="center" style="font-size: 13pt;"><strong>ANCILLARY OR OTHER BUSINESS CARRIED OVER BY THE ${nm?(pv?`<span class="filled">${esc(nm)}</span>`:`${esc(nm)}`):(pv?`<span class="empty">[NAME OF THE LLP]</span>`:"[NAME OF THE LLP]")}</strong></p>
 
 <p><strong>The Business Incidental Or Ancillary To The Attainment Of The Main Business Are:</strong></p>
-<p>To achieve its main business, the LLP will undertake ancillary works including the acquisition of specialized manufacturing infrastructure and extrusion machinery, the maintenance of climate-controlled warehousing, the procurement of mandatory FSSAI and BIS certifications, the establishment of R&amp;D laboratories to secure patents and proprietary formulations, the management of industrial financing and bank guarantees for government tendering, the operation of domestic and international logistics networks for import and export, and the formation of strategic joint ventures and technical collaborations to enhance nutritional food security.</p>
+<p>${biz 
+  ? `To achieve its main business, the LLP will undertake all ancillary works incidental to and necessary for the attainment of the above-mentioned objects, including but not limited to: the acquisition of necessary infrastructure, equipment, and technology; the procurement of all requisite licences, certifications, and regulatory approvals; the establishment and maintenance of offices, warehouses, and operational facilities; the management of financing, bank accounts, and government tenders; the operation of domestic and international logistics and supply chain networks; and the formation of strategic partnerships, joint ventures, and technical collaborations as may be required.`
+  : `[Ancillary business details will be generated based on the business objectives entered above.]`
+}</p>
 
 <h3 class="sched-title">SCHEDULE 2</h3>
 <p>Matters To Be Decided By A Resolution Passed By A Majority In Share Holding Of The Partners:</p>

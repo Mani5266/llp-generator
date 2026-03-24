@@ -3,8 +3,12 @@ import { geminiJSON } from "@/lib/gemini";
 import { buildPrompt, buildExtractionPrompt, AIReply } from "@/lib/prompts";
 import { LLPData } from "@/types";
 import { validateUpdates } from "@/lib/validation";
+import { getAuthUser } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
+  const { user, error: authError } = await getAuthUser(req);
+  if (authError) return authError;
+
   try {
     const { message, data, step, files } = await req.json() as { 
       message: string; 
@@ -37,15 +41,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(result);
   } catch (err) {
     console.error("chat error:", err);
-    let errorMessage = "Sorry, I had trouble with that. Please try again.";
-    if (err instanceof Error) {
-      errorMessage = `AI Error: ${err.message}`;
-    }
+    const errorMessage = "Sorry, I had trouble processing that. Please try again.";
     return NextResponse.json({
       message: errorMessage,
       validationError: err instanceof Error ? err.message : "error",
       suggestedOptions: [],
       suggestedCheckboxes: [],
-    });
+    }, { status: 500 });
   }
 }

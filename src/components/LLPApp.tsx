@@ -4,7 +4,6 @@ import { LLPData, defaultData, blankPartner, getPct, getMissing, toTitleCase, ca
 import { renderDeed } from "@/lib/deed-template";
 import ChatPanel from "./ChatPanel";
 import DocumentPanel from "./DocumentPanel";
-import { getAgreement, createAgreement, updateAgreement } from "@/lib/actions/agreements";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "./AuthProvider";
 import { useRouter } from "next/navigation";
@@ -45,32 +44,27 @@ export default function LLPApp() {
   const isInitialMount = useRef(true);
   const [mobileTab, setMobileTab] = useState<"chat" | "preview">("chat");
 
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
   useEffect(() => {
     if (!user) return;
     const params = new URLSearchParams(window.location.search);
     const id = params.get("id");
     if (id) {
       setSessionId(id);
-      getAgreement(id, user.id).then(({ data: dbData, error }: { data: any, error: string | null }) => {
+      supabase.from("agreements").select("*").eq("id", id).eq("user_id", user.id).single().then(({ data: dbData, error }) => {
         if (!error && dbData && dbData.data && Object.keys(dbData.data).length > 0) {
           setData(dbData.data as LLPData);
           setStep(dbData.step);
           setDone(dbData.is_done);
         } else {
           // No matching agreement found for this user — redirect to dashboard
-          setErrorMsg(error || "Agreement not found");
           router.replace("/dashboard");
         }
       });
     } else {
-      createAgreement(user.id, defaultData()).then(({ data: dbData, error }: { data: any, error: string | null }) => {
+      supabase.from("agreements").insert([{ data: defaultData(), step: "num_partners", is_done: false, user_id: user.id }]).select().single().then(({ data: dbData, error }) => {
         if (!error && dbData) {
           setSessionId(dbData.id);
           window.history.replaceState({}, "", `?id=${dbData.id}`);
-        } else {
-          setErrorMsg(error || "Failed to create agreement");
         }
       });
     }
@@ -80,10 +74,10 @@ export default function LLPApp() {
     if (isInitialMount.current) { isInitialMount.current = false; return; }
     if (!sessionId) return;
     const saveTimer = setTimeout(() => {
-      updateAgreement(sessionId, { data, step, is_done: done }).then(({ error }: { error: string | null }) => {
-        if (error) {
-          console.error("Auto-save failed:", error);
-        }
+      supabase.from("agreements").update({
+        data, step, is_done: done, updated_at: new Date().toISOString()
+      }).eq("id", sessionId).then(({ error }) => {
+        if (error) console.error("Auto-save failed:", error.message);
       });
     }, 1000);
     return () => clearTimeout(saveTimer);
@@ -167,10 +161,7 @@ export default function LLPApp() {
     if (!r.ok){alert("Failed");return;}
     const blob = new Blob([await r.text()],{type:"text/html"});
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `LLP_Agreement_${(data.llpName || "draft").replace(/\s+/g, "_")}.pdf.html`; // Note: It's actually HTML that prints to PDF or similar
-    a.click();
+    window.open(url,"_blank");
     setTimeout(() => URL.revokeObjectURL(url), 60000);
   };
 
@@ -190,16 +181,6 @@ export default function LLPApp() {
 
   return (
     <div className="mobile-stack" style={{display:"grid",gridTemplateColumns:"420px 1fr",height:"100vh",overflow:"hidden"}}>
-      {errorMsg && (
-        <div style={{
-          position: "fixed", top: 20, right: 20, background: "#fee2e2", color: "#b91c1c", 
-          padding: "12px 20px", borderRadius: "8px", border: "1px solid #fca5a5", zIndex: 100,
-          boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)"
-        }}>
-          {errorMsg}
-          <button onClick={() => setErrorMsg(null)} style={{ marginLeft: 10, fontWeight: "bold" }}>×</button>
-        </div>
-      )}
       <div style={{display: mobileTab === "chat" ? "flex" : "none", flexDirection:"column", height:"100%"}}
            id="chat-section">
         <ChatPanel data={data} step={step} done={done} pct={getPct(data)} sessionId={sessionId}
