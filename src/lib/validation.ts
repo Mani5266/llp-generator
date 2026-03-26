@@ -3,13 +3,13 @@
  * Each returns { valid: boolean, error?: string }
  */
 
-export interface ValidationResult {
+interface ValidationResult {
   valid: boolean;
   error?: string;
 }
 
 /** PAN: 5 letters + 4 digits + 1 letter (e.g., ABCDE1234F) */
-export function validatePAN(pan: string): ValidationResult {
+function validatePAN(pan: string): ValidationResult {
   if (!pan || !pan.trim()) return { valid: false, error: "PAN number is required." };
   const cleaned = pan.trim().toUpperCase();
   if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(cleaned)) {
@@ -19,7 +19,7 @@ export function validatePAN(pan: string): ValidationResult {
 }
 
 /** PIN code: exactly 6 digits, first digit 1-9 */
-export function validatePIN(pin: string): ValidationResult {
+function validatePIN(pin: string): ValidationResult {
   if (!pin || !pin.trim()) return { valid: false, error: "PIN code is required." };
   const cleaned = pin.trim();
   if (!/^[1-9][0-9]{5}$/.test(cleaned)) {
@@ -29,7 +29,7 @@ export function validatePIN(pin: string): ValidationResult {
 }
 
 /** Age: numeric, between 18 and 100 */
-export function validateAge(age: string): ValidationResult {
+function validateAge(age: string): ValidationResult {
   if (!age || !age.trim()) return { valid: false, error: "Age is required." };
   const n = Number(age.trim());
   if (isNaN(n) || !Number.isInteger(n)) {
@@ -41,7 +41,7 @@ export function validateAge(age: string): ValidationResult {
 }
 
 /** Capital amount: must be a positive number */
-export function validateCapital(amount: number | string): ValidationResult {
+function validateCapital(amount: number | string): ValidationResult {
   const n = typeof amount === "string" ? Number(amount.replace(/[₹,\s]/g, "")) : amount;
   if (isNaN(n) || n <= 0) {
     return { valid: false, error: "Capital amount must be a positive number." };
@@ -53,7 +53,7 @@ export function validateCapital(amount: number | string): ValidationResult {
 }
 
 /** Validate percentage contributions sum to 100 */
-export function validatePercentages(percentages: number[]): ValidationResult {
+function validatePercentages(percentages: number[]): ValidationResult {
   const sum = percentages.reduce((s, p) => s + (p || 0), 0);
   if (Math.abs(sum - 100) > 0.1) {
     return { valid: false, error: `Percentages must add up to 100%. Current total: ${sum.toFixed(1)}%.` };
@@ -66,7 +66,7 @@ export function validatePercentages(percentages: number[]): ValidationResult {
 }
 
 /** Name: non-empty, minimum 2 characters */
-export function validateName(name: string, label = "Name"): ValidationResult {
+function validateName(name: string, label = "Name"): ValidationResult {
   if (!name || !name.trim()) return { valid: false, error: `${label} is required.` };
   if (name.trim().length < 2) return { valid: false, error: `${label} must be at least 2 characters.` };
   if (/[0-9]/.test(name)) return { valid: false, error: `${label} should not contain numbers.` };
@@ -82,7 +82,7 @@ const INDIAN_STATES = [
   "chandigarh","puducherry","lakshadweep","andaman and nicobar","dadra and nagar haveli and daman and diu"
 ];
 
-export function validateState(state: string): ValidationResult {
+function validateState(state: string): ValidationResult {
   if (!state || !state.trim()) return { valid: false, error: "State is required." };
   const s = state.trim().toLowerCase();
   if (!INDIAN_STATES.includes(s)) {
@@ -92,7 +92,7 @@ export function validateState(state: string): ValidationResult {
 }
 
 /** LLP name: non-empty, should end with "LLP" */
-export function validateLLPName(name: string): ValidationResult {
+function validateLLPName(name: string): ValidationResult {
   if (!name || !name.trim()) return { valid: false, error: "LLP name is required." };
   if (name.trim().length < 3) return { valid: false, error: "LLP name must be at least 3 characters." };
   if (!name.trim().toUpperCase().endsWith("LLP")) {

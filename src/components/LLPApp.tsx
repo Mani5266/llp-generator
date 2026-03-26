@@ -72,11 +72,11 @@ export default function LLPApp() {
 
   useEffect(() => {
     if (isInitialMount.current) { isInitialMount.current = false; return; }
-    if (!sessionId) return;
+    if (!sessionId || !user) return;
     const saveTimer = setTimeout(() => {
       supabase.from("agreements").update({
         data, step, is_done: done, updated_at: new Date().toISOString()
-      }).eq("id", sessionId).then(({ error }) => {
+      }).eq("id", sessionId).eq("user_id", user.id).then(({ error }) => {
         if (error) console.error("Auto-save failed:", error.message);
       });
     }, 1000);
@@ -207,9 +207,7 @@ export default function LLPApp() {
       {/* Mobile Tab Bar */}
       <div className="mobile-tab-bar" style={{
         position:"fixed",bottom:0,left:0,right:0,zIndex:50,
-        backdropFilter:"blur(12px) saturate(180%)",
-        WebkitBackdropFilter:"blur(12px) saturate(180%)",
-        background:"rgba(11, 15, 25, 0.92)",
+        background:"#0c1929",
         borderTop:"1px solid rgba(255, 255, 255, 0.06)",
         padding:"6px 8px",
         gap:6,
@@ -218,13 +216,12 @@ export default function LLPApp() {
           className="mobile-tab"
           onClick={() => setMobileTab("chat")}
           style={{
-            background: mobileTab === "chat" ? "var(--accent-gradient)" : "transparent",
+            background: mobileTab === "chat" ? "#142640" : "transparent",
             color: mobileTab === "chat" ? "#fff" : "rgba(148, 163, 184, 0.7)",
-            borderRadius:"var(--radius-md)",
+            borderRadius:10,
             fontWeight: mobileTab === "chat" ? 700 : 600,
             fontSize: 12,
             letterSpacing: "-0.2px",
-            boxShadow: mobileTab === "chat" ? "0 2px 8px rgba(13, 150, 104, 0.25)" : "none",
           }}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -236,13 +233,12 @@ export default function LLPApp() {
           className="mobile-tab"
           onClick={() => setMobileTab("preview")}
           style={{
-            background: mobileTab === "preview" ? "var(--accent-gradient)" : "transparent",
+            background: mobileTab === "preview" ? "#142640" : "transparent",
             color: mobileTab === "preview" ? "#fff" : "rgba(148, 163, 184, 0.7)",
-            borderRadius:"var(--radius-md)",
+            borderRadius:10,
             fontWeight: mobileTab === "preview" ? 700 : 600,
             fontSize: 12,
             letterSpacing: "-0.2px",
-            boxShadow: mobileTab === "preview" ? "0 2px 8px rgba(13, 150, 104, 0.25)" : "none",
           }}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">

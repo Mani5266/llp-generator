@@ -60,6 +60,12 @@ export interface LLPData {
 /**
  * Check if two names are suspiciously similar (likely hallucination).
  * Returns true if names are too similar and fatherName should be cleared.
+ *
+ * IMPORTANT: In Indian naming conventions, father and child almost always
+ * share the surname (e.g., "Deepak Vasant Surve" is S/O "Vasant Surve").
+ * The middle name is often the father's first name. So a "subset" check
+ * is too aggressive — we only flag names that are nearly IDENTICAL
+ * (same word count + all words match or are within 1-2 typos).
  */
 export function isSelfParenting(fullName: string, fatherName: string): boolean {
   if (!fullName || !fatherName) return false;
@@ -67,18 +73,17 @@ export function isSelfParenting(fullName: string, fatherName: string): boolean {
   const a = normalize(fullName);
   const b = normalize(fatherName);
   
-  // Exact match
+  // Exact match after normalization
   if (a === b) return true;
   
-  // Check if names share most words (e.g., "JAJULA MANI" vs "JAJALA MANI")
   const wordsA = a.split(" ");
   const wordsB = b.split(" ");
   
-  // If one name is a subset of the other
-  if (wordsA.every(w => b.includes(w)) || wordsB.every(w => a.includes(w))) return true;
-  
-  // Check edit distance on each word pair - if most words are within 1-2 characters of each other
+  // Only compare when names have the SAME number of words.
+  // "Deepak Vasant Surve" (3 words) vs "Vasant Surve" (2 words) is a
+  // legitimate father-child pair, NOT a hallucination.
   if (wordsA.length === wordsB.length && wordsA.length > 0) {
+    // Check if every word pair is within edit distance 2 (catches typos like JAJULA vs JAJALA)
     let similarWords = 0;
     for (let i = 0; i < wordsA.length; i++) {
       if (levenshtein(wordsA[i], wordsB[i]) <= 2) similarWords++;

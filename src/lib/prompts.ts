@@ -10,58 +10,173 @@ export interface AIReply {
   isComplete?: boolean;
 }
 
+/** Extracted data for a single Aadhaar card */
+export interface SingleCardExtraction {
+  fullName: string;
+  salutation: string;
+  relationDescriptor: string;
+  fatherSalutation: string;
+  fatherName: string;
+  dob: string;
+  aadhaarAddress: string;
+}
+
 /**
- * Dedicated prompt for Aadhaar extraction — called ONLY when files are attached.
+ * Focused prompt for extracting data from a SINGLE Aadhaar card image.
+ * Sent one card at a time for maximum accuracy.
  */
-export function buildExtractionPrompt(data: Partial<LLPData>, numFiles: number): string {
-  return `You are "LLP AI Assistant". ${numFiles} Aadhaar card image(s) have been attached.
+export function buildSingleCardPrompt(): string {
+  return `You are an expert Aadhaar card OCR system. ONE Aadhaar card image is provided.
+Your task: extract EVERY detail from this card with 100% accuracy.
 
-TASK: Extract details for each partner with 100% accuracy.
-1. Salutation: (Mr., Mrs., Ms., Dr.) - Infer from name/gender.
-2. Full Name: (Found on the FRONT. Exactly as printed. Check every character: e.g., 'Jajula' NOT 'Jajala').
-3. Relation Descriptor: (S/O, D/O, W/O, C/O) - Found on the BACK/BOTTOM.
-4. Father/Mother/Spouse Name: (Found on the BACK/BOTTOM after S/O, D/O, W/O, or C/O. Extract the name ONLY. Remove titles like Mr. or Shri).
-5. DOB: (Found on the FRONT as "Year of Birth" or "DOB" or "Date of Birth". Extract EXACTLY as printed on the card - e.g. "15/06/1997" or "1997". Return the raw value as a string. Do NOT calculate age yourself).
-6. Full Address: (Found on the BACK. One string, copied exactly).
+FIELDS TO EXTRACT:
 
-MAPPING (STRICT):
-For each Card i (where i is the 0-based index of the card), you MUST include these EXACT keys in the "updates" object:
-- "partners[i].fullName": (string)
-- "partners[i].relationDescriptor": (string)
-- "partners[i].fatherName": (string)
-- "partners[i].dob": (string - raw DOB or Year of Birth exactly as printed on card, e.g. "15/06/1997" or "1997")
-- "partners[i].aadhaarAddress": (string)
+1. "fullName" — The cardholder's name, printed prominently on the FRONT.
+   Copy EXACTLY as printed, character by character. Check spelling twice.
 
-STRICT ANTI-HALLUCINATION RULES:
-- **DESCRIPTOR MANDATORY**: ONLY extract a name as "fatherName" if the text "S/O" or "D/O" or "W/O" or "C/O" is PHYSICALLY VISIBLE on the card image, followed by the name. If you cannot see these exact characters on the card, you MUST return "" for "fatherName".
-- **NO PROXIMITY GUESSING**: Do NOT assume a name found near the address or on the card is the father's name if it lacks the descriptor.
-- **NO SURNAME MATCHING**: NEVER use a name just because it shares a surname with the partner.
-- **IGNORE LANDMARKS**: Aadhaar addresses often contain landmark names (e.g., "Opposite..."). NEVER use these.
-- **ZERO HALLUCINATION**: If you are not 100% certain a name is a Father/Mother/Spouse name based on a descriptor, return "". It is BETTER to ask the user than to provide a wrong name.
-- **NO SELF-PARENTING**: NEVER set "fatherName" equal to or similar to "fullName". If the father name looks like a variation of the partner's own name (same or similar first/last name, close spelling), return "". Examples of violations: fullName="JAJULA MANI" and fatherName="JAJALA MANI" — these are too similar, return "".
-- **SPELLING ACCURACY**: Copy character-by-character from the card.
-- **EVIDENCE ONLY**: Every single character in "fatherName" MUST be visually present on the card after a descriptor (S/O, D/O, W/O, C/O). If you cannot point to the exact location on the card where the father's name appears after a descriptor, return "".
-- **WHEN IN DOUBT, RETURN EMPTY**: It is always better to return "" and let the system ask the user, than to guess or hallucinate a name. There is ZERO penalty for returning "".
+2. "salutation" — Infer from gender printed on card (Male/पुरुष → "Mr.", Female/महिला → "Mrs." or "Ms.")
 
-CRITICAL: If "fatherName" is "", the system will correctly ask the user. Do NOT try to fill it to be helpful. A wrong father name in a legal document is far worse than a missing one.
+3. "relationDescriptor" — One of: "S/O", "D/O", "W/O", "C/O"
+   Look for these markers on the card. They may appear:
+   - On the FRONT below the name
+   - On the BACK above or within the address
+   - In various capitalizations: "S/O", "s/o", "S/o", "C/O", "c/o" etc.
+   - With or without a colon: "S/O:" or "S/O"
 
-DO NOT PROCEED to address verification if any Father's Name is missing. Return "" and the system will prompt the user.
+4. "fatherSalutation" — "Mr." if S/O or C/O, "Mrs." if D/O or W/O (for mother/spouse)
 
-CONVERSATIONAL LOGIC:
-- ALWAYS include the "updates" object with ALL fields found.
-- Use 1-indexed "Partner 1", "Partner 2" in your "message".
-- Use 0-indexed indices (e.g., partners[0]) in the "updates" keys.
+5. "fatherName" — The name that appears AFTER the relation descriptor (S/O, D/O, W/O, C/O).
+   - Strip any title prefix: remove "Mr.", "Mrs.", "Shri", "Smt.", "Late" etc.
+   - Copy the remaining name EXACTLY as printed.
+   - This MUST NOT be the same as "fullName". If they look identical, re-read the card.
+   - If the card image does not show the relation descriptor area (e.g., only front side uploaded and S/O is on back), set to "".
 
-1. If Name, Father's Name, AND DOB are FOUND for ALL partners:
-   - Message: "I've extracted details for all ${numFiles} partners and mapped them to the document. Starting with Partner 1 ([name]), is this their residential address? [raw address]"
-   - nextStep: "partner_0"
-   - suggestedOptions: ["Yes: Correct", "No: I'll type it"]
-2. If ANY basic detail (FullName/FatherName/DOB) is MISSING:
-   - Message: "I've mapped the extracted details. However, Partner [1-indexed number] is missing their [Field Name]. Please provide it."
-   - nextStep: "partner_0"
-   - suggestedOptions: []
+6. "dob" — Date of Birth or Year of Birth, found on the FRONT.
+   Labeled as "DOB", "Date of Birth", "Year of Birth", "जन्म तिथि".
+   Copy EXACTLY as printed: "15/06/1997" or "1997". Do NOT reformat.
 
-Return ONLY valid JSON (no markdown, no code fences).`;
+7. "aadhaarAddress" — The full address, usually on the BACK.
+   Copy the ENTIRE address as one string, exactly as printed.
+   If no address is visible (front-only image), set to "".
+
+RULES:
+- Extract ALL 7 fields. Do not skip any.
+- If a field is genuinely not visible in the image (e.g., back side not shown), return "".
+- Do NOT guess or hallucinate. Only return what is clearly printed on the card.
+- Do NOT confuse similar-looking names. Read carefully.
+
+Return ONLY a valid JSON object with exactly these 7 keys:
+{"fullName":"...","salutation":"...","relationDescriptor":"...","fatherSalutation":"...","fatherName":"...","dob":"...","aadhaarAddress":"..."}
+
+No markdown, no code fences, no explanation — just the JSON object.`;
+}
+
+/**
+ * Builds the final conversational response after all cards have been individually extracted.
+ * Takes the merged extraction results and formats the AI reply.
+ */
+export function buildExtractionResponse(
+  extractions: SingleCardExtraction[],
+  numPartners: number
+): AIReply {
+  const updates: Record<string, unknown> = {};
+  const missing: string[] = [];
+
+  for (let i = 0; i < extractions.length; i++) {
+    const ext = extractions[i];
+
+    // Always map whatever was found
+    if (ext.fullName) {
+      updates[`partners[${i}].fullName`] = ext.fullName;
+      updates[`partners[${i}].salutation`] = ext.salutation || "Mr.";
+    }
+    if (ext.relationDescriptor) {
+      updates[`partners[${i}].relationDescriptor`] = ext.relationDescriptor;
+    }
+    if (ext.fatherSalutation) {
+      updates[`partners[${i}].fatherSalutation`] = ext.fatherSalutation;
+    }
+    if (ext.fatherName) {
+      updates[`partners[${i}].fatherName`] = ext.fatherName;
+    }
+    if (ext.dob) {
+      updates[`partners[${i}].dob`] = ext.dob;
+    }
+    if (ext.aadhaarAddress) {
+      updates[`partners[${i}].aadhaarAddress`] = ext.aadhaarAddress;
+    }
+
+    // Track missing fields
+    if (!ext.fullName) missing.push(`Partner ${i + 1}: Full Name`);
+    if (!ext.fatherName) missing.push(`Partner ${i + 1}: Father/Mother/Spouse Name`);
+    if (!ext.dob) missing.push(`Partner ${i + 1}: Date of Birth`);
+  }
+
+  if (missing.length === 0) {
+    // All details extracted — ask about first partner's address
+    const p1 = extractions[0];
+    const summary = extractions
+      .map((ext, i) => `Partner ${i + 1}: ${ext.fullName}, ${ext.relationDescriptor} ${ext.fatherName}, DOB: ${ext.dob}`)
+      .join("\n");
+
+    return {
+      message: `I've extracted and mapped details for all ${extractions.length} partners:\n\n${summary}\n\nStarting with Partner 1 (${p1.fullName}), is this their residential address?\n"${p1.aadhaarAddress || "[No address found — please provide it]"}"`,
+      updates,
+      nextStep: "partner_0",
+      suggestedOptions: p1.aadhaarAddress ? ["Yes: Correct", "No: I'll type it"] : [],
+      suggestedCheckboxes: [],
+      isComplete: false,
+      validationError: null,
+    };
+  } else {
+    // Some details missing — ask for ONE field at a time, starting with the
+    // lowest-index partner's first missing field. This MUST match the order
+    // that buildPrompt()'s `partners.findIndex(p => !p.fullName || !p.fatherName || …)`
+    // will discover on the next turn, so the user's reply gets mapped correctly.
+
+    // Find the first missing field (same logic as buildPrompt's missingPartnerIdx)
+    let firstMissingPartner = -1;
+    let firstMissingField = "";
+    let firstMissingLabel = "";
+    for (let i = 0; i < extractions.length; i++) {
+      const ext = extractions[i];
+      if (!ext.fullName) {
+        firstMissingPartner = i;
+        firstMissingField = "fullName";
+        firstMissingLabel = "Full Name";
+        break;
+      }
+      if (!ext.fatherName) {
+        firstMissingPartner = i;
+        firstMissingField = "fatherName";
+        firstMissingLabel = "Father/Mother/Spouse Name";
+        break;
+      }
+      if (!ext.dob) {
+        firstMissingPartner = i;
+        firstMissingField = "dob";
+        firstMissingLabel = "Date of Birth";
+        break;
+      }
+    }
+
+    // Build a full summary of ALL missing fields for context
+    const missingStr = missing.map(m => `- ${m}`).join("\n");
+
+    // The message explicitly asks for the FIRST missing field only
+    const partnerName = extractions[firstMissingPartner]?.fullName || `Partner ${firstMissingPartner + 1}`;
+    const askMessage = `I've mapped the extracted details. However, the following fields are missing:\n\n${missingStr}\n\nLet's fill these in one at a time.\n\n**Partner ${firstMissingPartner + 1} (${partnerName})**: Please provide their **${firstMissingLabel}**.`;
+
+    return {
+      message: askMessage,
+      updates,
+      nextStep: "partner_0",
+      suggestedOptions: [],
+      suggestedCheckboxes: [],
+      isComplete: false,
+      validationError: null,
+    };
+  }
 }
 
 /**
@@ -121,21 +236,63 @@ ${JSON.stringify(exampleUpdates, null, 2)}`;
   } else if (mp) {
     const missingField = !mp.fullName ? "Full Name" : (!mp.fatherName ? "Father's Name" : "Date of Birth");
     const fieldKey = !mp.fullName ? "fullName" : (!mp.fatherName ? "fatherName" : "dob");
-    
+
+    // Determine what the NEXT missing field will be AFTER this one is filled,
+    // so the AI can ask for it in the same response.
+    let nextMissingMsg = "";
+    {
+      // Simulate filling this field, then find the next gap
+      const simPartners = partners.map((p, i) => {
+        if (i === missingPartnerIdx) {
+          return { ...p, [fieldKey]: "<filled>" };
+        }
+        return p;
+      });
+      const nextIdx = simPartners.findIndex(p => !p.fullName || !p.fatherName || (!p.age && !p.dob));
+      if (nextIdx !== -1) {
+        const np = simPartners[nextIdx];
+        const nextField = !np.fullName ? "Full Name" : (!np.fatherName ? "Father/Mother/Spouse Name" : "Date of Birth");
+        const nextName = np.fullName || `Partner ${nextIdx + 1}`;
+        nextMissingMsg = `Then immediately ask: "Now, please provide **${nextField}** for **Partner ${nextIdx + 1} (${nextName})**."`;
+      }
+    }
+
+    // Current relation info for this partner (from OCR or defaults)
+    const currentRelDesc = mp.relationDescriptor || "S/O";
+    const currentFatherSal = mp.fatherSalutation || "Mr.";
+
     addressSection = `
 ## CURRENT TASK: Collect Missing Basic Details for Partner ${missingPartnerIdx + 1}
-Partner ${missingPartnerIdx + 1} (${mp.fullName || "New Partner"}) is missing their **${missingField}**.
 
+⚠️ CRITICAL: The user's input is the answer for Partner ${missingPartnerIdx + 1}'s ${missingField}.
+Partner ${missingPartnerIdx + 1} name: "${mp.fullName || "New Partner"}"
+Current relation descriptor: "${currentRelDesc}"
+Current father/spouse salutation: "${currentFatherSal}"
+Missing field: **${missingField}**
+Update key: "partners[${missingPartnerIdx}].${fieldKey}"
+
+DO NOT map this value to any other partner. The index is ${missingPartnerIdx} — use EXACTLY "partners[${missingPartnerIdx}].${fieldKey}".
+${fieldKey === "fatherName" ? `
+⚠️ RELATION DESCRIPTOR RULES — READ CAREFULLY:
+The user may indicate the relationship type in their message. Look for keywords:
+- "father", "dad", "papa", "S/O", "s/o" → relationDescriptor = "S/O", fatherSalutation = "Mr."
+- "mother", "mom", "maa", "D/O", "d/o" → relationDescriptor = "D/O", fatherSalutation = "Mrs."
+- "spouse", "wife", "W/O", "w/o" → relationDescriptor = "W/O", fatherSalutation = "Mr." (if the spouse name sounds male) or "Mrs." (if spouse name sounds female)
+- "husband" → relationDescriptor = "W/O", fatherSalutation = "Mr."
+- "guardian", "C/O", "c/o" → relationDescriptor = "C/O", fatherSalutation = "Mr."
+- If user gives ONLY a name with no relation keyword, keep the current relationDescriptor "${currentRelDesc}" unchanged.
+
+When updating relationDescriptor/fatherSalutation, ALSO include these keys in updates:
+  "partners[${missingPartnerIdx}].relationDescriptor": "<S/O|D/O|W/O|C/O>",
+  "partners[${missingPartnerIdx}].fatherSalutation": "<Mr.|Mrs.>"
+` : ""}
 IF user provides the missing information:
-- updates: You MUST use the key "partners[${missingPartnerIdx}].${fieldKey}" in your updates object.
-- If this was the LAST missing basic detail for ALL partners:
+- updates: { "partners[${missingPartnerIdx}].${fieldKey}": "<user's input — extract just the NAME, strip relation keywords like 'father:', 'spouse:', etc.>" }
+${nextMissingMsg ? `- ${nextMissingMsg}\n  - nextStep: "partner_0"\n  - suggestedOptions: []` :
+`- This was the LAST missing basic detail for ALL partners.
   - nextStep: "partner_0"
-  - message: "Details for Partner ${missingPartnerIdx + 1} saved! Now all partners have their basic details. Starting with Partner 1's (${partners[0].fullName}) address from Aadhaar: '${partners[0].aadhaarAddress}', is this correct?"
-  - suggestedOptions: ["Yes: Correct", "No: I'll type it"]
-- ELSE (more basic details still missing):
-  - nextStep: "partner_0"
-  - message: "Got it! ${missingField} for Partner ${missingPartnerIdx + 1} saved. [Ask for next missing field]"
-  - suggestedOptions: []
+  - message: "${missingField} for Partner ${missingPartnerIdx + 1} saved! Now all partners have their basic details. Starting with Partner 1's (${partners[0]?.fullName}) address from Aadhaar: '${partners[0]?.aadhaarAddress}', is this correct?"
+  - suggestedOptions: ["Yes: Correct", "No: I'll type it"]`}
 `;
   } else if (allExtracted && !allAddressesConfirmed && targetPartner) {
     const partnerNamesForCheckbox = partners.map(p => `${p.salutation || ""} ${p.fullName}`.trim()).filter(Boolean);
@@ -394,7 +551,7 @@ nextStep: "other_points"`,
     `P${i + 1}: name="${p.fullName || "?"}", addr_confirmed=${!!p.address?.pin}`
   ).join(" | ");
 
-  return `You are "Deed AI Assistant" — a conversational LLP Agreement assistant.
+  return `You are "LLP Generator Assistant" — a conversational LLP Agreement assistant.
 Return ONLY valid JSON. No markdown, no code fences.
 
 STEP: ${step}

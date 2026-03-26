@@ -13,27 +13,33 @@ function client() {
 
 export async function geminiText(prompt: string, files?: Array<{ base64: string; mimeType: string }>): Promise<string> {
   const m = client().getGenerativeModel({ model: "gemini-2.5-flash" });
-  const parts: any[] = [{ text: prompt }];
+
+  // For multimodal (vision) requests: images first, then prompt text.
+  // Label each image so the model knows the card order.
+  const parts: any[] = [];
   if (files && files.length > 0) {
-    for (const f of files) {
+    for (let i = 0; i < files.length; i++) {
+      parts.push({ text: `--- Aadhaar Card ${i + 1} (Partner ${i + 1}, index ${i}) ---` });
       parts.push({
         inlineData: {
-          data: f.base64,
-          mimeType: f.mimeType,
+          data: files[i].base64,
+          mimeType: files[i].mimeType,
         },
       });
     }
   }
+  parts.push({ text: prompt });
 
-  // 60-second timeout to prevent indefinite hangs
+  // 90-second timeout for multi-image OCR requests
+  const timeoutMs = files && files.length > 0 ? 90000 : 60000;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 60000);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const r = await m.generateContent({ contents: [{ role: "user", parts }] }, { signal: controller.signal } as any);
     return r.response.text().trim();
   } catch (err: any) {
     if (err?.name === "AbortError" || controller.signal.aborted) {
-      throw new Error("AI request timed out after 60 seconds. Please try again.");
+      throw new Error(`AI request timed out after ${timeoutMs / 1000} seconds. Please try again.`);
     }
     throw err;
   } finally {

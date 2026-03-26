@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { renderDeed, PRINT_CSS } from "@/lib/deed-template";
-import { LLPData } from "@/types";
+import { PRINT_CSS } from "@/lib/deed-template";
 import { getAuthUser } from "@/lib/auth";
+import { pdfInputSchema } from "@/lib/schemas";
+import { rateLimit, RATE_LIMITS, rateLimitResponse } from "@/lib/rateLimit";
+import { logAudit } from "@/lib/audit";
 
 /** Strip dangerous HTML: <script> tags, event handlers (onerror, onclick, etc.), javascript: URLs */
 function sanitizeHtml(raw: string): string {
@@ -21,8 +23,28 @@ export async function POST(req: NextRequest) {
   const { user, error: authError } = await getAuthUser(req);
   if (authError) return authError;
 
+  // Rate limit: 30 requests per hour per user
+  const rl = rateLimit(`${user!.id}:downloadPdf`, RATE_LIMITS.downloadPdf);
+  if (!rl.allowed) return rateLimitResponse(rl.retryAfterMs);
+
   try {
-    const { html: bodyHtml, llpName } = await req.json();
+    const body = await req.json();
+    const parsed = pdfInputSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Invalid input", details: parsed.error.flatten() },
+        { status: 400 }
+      );
+    }
+
+    const { html: bodyHtml, llpName } = parsed.data;
+
+    // Audit log (fire-and-forget)
+    logAudit(user!.id, "download_pdf", req, {
+      metadata: { llpName: llpName || "unnamed" },
+    });
+
     const safeName = String(llpName || "Draft").replace(/[<>"'&]/g, "");
     const safeBody = sanitizeHtml(String(bodyHtml || ""));
     const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/>
@@ -41,7 +63,7 @@ export async function POST(req: NextRequest) {
 <div class="content">${safeBody}</div>
 </body></html>`;
     return new NextResponse(html, { headers:{"Content-Type":"text/html; charset=utf-8"} });
-  } catch (err) {
+  } catch {
     return NextResponse.json({ error:"Failed" }, { status:500 });
   }
 }

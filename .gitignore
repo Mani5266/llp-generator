@@ -1,12 +1,7 @@
-# depend.env.local
-.next/
+# dependencies
 node_modules/
-nul
 /.pnp
 .pnp.js
-
-# dependencies
-
 
 # testing
 /coverage
@@ -22,12 +17,11 @@ nul
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+*.log
 
 # local env files
 .env*.local
 .env
-
-.env.local
 
 # vercel
 .vercel
@@ -35,3 +29,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# os artifacts
+nul

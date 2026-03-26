@@ -2,13 +2,36 @@ import { NextRequest, NextResponse } from "next/server";
 import { Document, Packer, Paragraph, TextRun, AlignmentType, UnderlineType } from "docx";
 import { LLPData, numWords, fmtINR, ordinalParty, fmtPartnerAddr, fmtRegAddr } from "@/types";
 import { getAuthUser } from "@/lib/auth";
+import { llpDataSchema } from "@/lib/schemas";
+import { rateLimit, RATE_LIMITS, rateLimitResponse } from "@/lib/rateLimit";
+import { logAudit } from "@/lib/audit";
 
 export async function POST(req: NextRequest) {
   const { user, error: authError } = await getAuthUser(req);
   if (authError) return authError;
 
+  // Rate limit: 30 requests per hour per user
+  const rl = rateLimit(`${user!.id}:downloadDocx`, RATE_LIMITS.downloadDocx);
+  if (!rl.allowed) return rateLimitResponse(rl.retryAfterMs);
+
   try {
-    const data: LLPData = await req.json();
+    const body = await req.json();
+    const parsed = llpDataSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Invalid input", details: parsed.error.flatten() },
+        { status: 400 }
+      );
+    }
+
+    const data = parsed.data as LLPData;
+
+    // Audit log (fire-and-forget)
+    logAudit(user!.id, "download_docx", req, {
+      metadata: { llpName: data.llpName || "unnamed" },
+    });
+
     const buf = await buildDocx(data);
     const name = (data.llpName || "draft").replace(/\s+/g, "_");
     return new NextResponse(new Uint8Array(buf), {
