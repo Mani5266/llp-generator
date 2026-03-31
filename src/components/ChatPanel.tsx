@@ -10,10 +10,9 @@ interface Props {
   onStep:(s:string)=>void; onDone:()=>void; onRestart:()=>void;
   onRestore:(data:LLPData, step:string, done:boolean)=>void;
   onBackToDashboard?:()=>void;
-  getAuthHeaders?:()=>Promise<Record<string,string>>;
 }
 
-export default function ChatPanel({data,step,done,pct,sessionId,onUpdates,onStep,onDone,onRestart,onRestore,onBackToDashboard,getAuthHeaders}:Props) {
+export default function ChatPanel({data,step,done,pct,sessionId,onUpdates,onStep,onDone,onRestart,onRestore,onBackToDashboard}:Props) {
   const [msgs,setMsgs] = useState<Msg[]>([
     { role:"agent", content:"Welcome to LLP Agreement Assistant.\n\nI will guide you through creating a legally compliant LLP Partnership Deed by collecting the required details step by step.\n\nTo begin, how many partners will be part of the LLP firm?", options:["2","3","4","5","5+"] },
   ]);
@@ -48,7 +47,7 @@ export default function ChatPanel({data,step,done,pct,sessionId,onUpdates,onStep
     setBusy(true);
     try {
       const apiData = isCountUpdate ? { ...data, numPartners: maybeNum } : data;
-      const hdrs = getAuthHeaders ? await getAuthHeaders() : {"Content-Type":"application/json"};
+      const hdrs: Record<string,string> = {"Content-Type":"application/json"};
       const payload = {
         message:msg, data: apiData, step,
         files: curFiles.length > 0 ? curFiles.map(f => ({ base64: f.base64, mimeType: f.mimeType })) : undefined

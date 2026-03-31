@@ -1,16 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { renderDeed } from "@/lib/deed-template";
-import { getAuthUser } from "@/lib/auth";
 import { llpDataSchema } from "@/lib/schemas";
 import { rateLimit, RATE_LIMITS, rateLimitResponse } from "@/lib/rateLimit";
-import { logAudit } from "@/lib/audit";
 
 export async function POST(req: NextRequest) {
-  const { user, error: authError } = await getAuthUser(req);
-  if (authError) return authError;
-
-  // Rate limit: 60 requests per hour per user
-  const rl = rateLimit(`${user!.id}:renderDeed`, RATE_LIMITS.renderDeed);
+  // Rate limit: 60 requests per hour per IP
+  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "anonymous";
+  const rl = rateLimit(`${clientIp}:renderDeed`, RATE_LIMITS.renderDeed);
   if (!rl.allowed) return rateLimitResponse(rl.retryAfterMs);
 
   try {
@@ -23,11 +19,6 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-
-    // Audit log (fire-and-forget)
-    logAudit(user!.id, "render_deed", req, {
-      metadata: { llpName: parsed.data.llpName || "unnamed" },
-    });
 
     return NextResponse.json({ html: renderDeed(parsed.data, "preview") });
   } catch {

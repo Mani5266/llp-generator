@@ -5,18 +5,7 @@ import { renderDeed } from "@/lib/deed-template";
 import ChatPanel from "./ChatPanel";
 import DocumentPanel from "./DocumentPanel";
 import { supabase } from "@/lib/supabase";
-import { useAuth } from "./AuthProvider";
 import { useRouter } from "next/navigation";
-
-/** Helper to build auth headers from the current Supabase session */
-async function authHeaders(): Promise<Record<string,string>> {
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
-  return {
-    "Content-Type": "application/json",
-    ...(token ? { "Authorization": `Bearer ${token}` } : {}),
-  };
-}
 
 function setPath(obj: Record<string,unknown>, path: string, val: unknown) {
   const parts = path.replace(/\[(\w+)\]/g, ".$1").split(".");
@@ -33,7 +22,6 @@ function setPath(obj: Record<string,unknown>, path: string, val: unknown) {
 }
 
 export default function LLPApp() {
-  const { user } = useAuth();
   const router = useRouter();
   const [data, setData]     = useState<LLPData>(defaultData());
   const [step, setStep]     = useState("num_partners");
@@ -45,38 +33,36 @@ export default function LLPApp() {
   const [mobileTab, setMobileTab] = useState<"chat" | "preview">("chat");
 
   useEffect(() => {
-    if (!user) return;
     const params = new URLSearchParams(window.location.search);
     const id = params.get("id");
     if (id) {
       setSessionId(id);
-      supabase.from("agreements").select("*").eq("id", id).eq("user_id", user.id).single().then(({ data: dbData, error }) => {
+      supabase.from("agreements").select("*").eq("id", id).single().then(({ data: dbData, error }) => {
         if (!error && dbData && dbData.data && Object.keys(dbData.data).length > 0) {
           setData(dbData.data as LLPData);
           setStep(dbData.step);
           setDone(dbData.is_done);
         } else {
-          // No matching agreement found for this user — redirect to dashboard
           router.replace("/dashboard");
         }
       });
     } else {
-      supabase.from("agreements").insert([{ data: defaultData(), step: "num_partners", is_done: false, user_id: user.id }]).select().single().then(({ data: dbData, error }) => {
+      supabase.from("agreements").insert([{ data: defaultData(), step: "num_partners", is_done: false }]).select().single().then(({ data: dbData, error }) => {
         if (!error && dbData) {
           setSessionId(dbData.id);
           window.history.replaceState({}, "", `?id=${dbData.id}`);
         }
       });
     }
-  }, [user, router]);
+  }, [router]);
 
   useEffect(() => {
     if (isInitialMount.current) { isInitialMount.current = false; return; }
-    if (!sessionId || !user) return;
+    if (!sessionId) return;
     const saveTimer = setTimeout(() => {
       supabase.from("agreements").update({
         data, step, is_done: done, updated_at: new Date().toISOString()
-      }).eq("id", sessionId).eq("user_id", user.id).then(({ error }) => {
+      }).eq("id", sessionId).then(({ error }) => {
         if (error) console.error("Auto-save failed:", error.message);
       });
     }, 1000);
@@ -97,13 +83,11 @@ export default function LLPApp() {
     setData(prev=>{
       const next = JSON.parse(JSON.stringify(prev)) as LLPData & Record<string,unknown>;
       for (const [k,v] of Object.entries(updates)) setPath(next,k,v);
-      // Auto-calculate age from DOB for each partner
       next.partners.forEach((p) => {
         if (p.dob) {
           const computed = calculateAge(p.dob);
           if (computed) p.age = computed;
         }
-        // Clear hallucinated father names (name too similar to partner's own name)
         if (p.fullName && p.fatherName && isSelfParenting(p.fullName, p.fatherName)) {
           p.fatherName = "";
         }
@@ -143,8 +127,7 @@ export default function LLPApp() {
   },[]);
 
   const dlDocx = async()=>{
-    const hdrs = await authHeaders();
-    const r = await fetch("/api/download-docx",{method:"POST",headers:hdrs,body:JSON.stringify(data)});
+    const r = await fetch("/api/download-docx",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});
     if (!r.ok){alert("Download failed");return;}
     const blob = await r.blob();
     const url = URL.createObjectURL(blob);
@@ -156,8 +139,7 @@ export default function LLPApp() {
   const dlPDF = async()=>{
     const el = document.getElementById("deedContent");
     const rawHtml = el ? el.innerHTML : (data.manualHtml || html);
-    const hdrs = await authHeaders();
-    const r = await fetch("/api/download-pdf",{method:"POST",headers:hdrs,body:JSON.stringify({ html: rawHtml, llpName: data.llpName })});
+    const r = await fetch("/api/download-pdf",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ html: rawHtml, llpName: data.llpName })});
     if (!r.ok){alert("Failed");return;}
     const blob = new Blob([await r.text()],{type:"text/html"});
     const url = URL.createObjectURL(blob);
@@ -186,8 +168,7 @@ export default function LLPApp() {
         <ChatPanel data={data} step={step} done={done} pct={getPct(data)} sessionId={sessionId}
           onUpdates={applyUpdates} onStep={setStep} onDone={()=>setDone(true)} onRestart={restart}
           onRestore={(d, s, dn) => { setData(d); setStep(s); setDone(dn); }}
-          onBackToDashboard={() => router.push("/dashboard")}
-          getAuthHeaders={authHeaders} />
+          onBackToDashboard={() => router.push("/dashboard")} />
       </div>
       <div style={{display: mobileTab === "preview" ? "flex" : undefined, flexDirection:"column", height:"100%"}}
            className={mobileTab !== "preview" ? "mobile-hide" : ""}

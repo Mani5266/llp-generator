@@ -1,17 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Document, Packer, Paragraph, TextRun, AlignmentType, UnderlineType } from "docx";
 import { LLPData, numWords, fmtINR, ordinalParty, fmtPartnerAddr, fmtRegAddr } from "@/types";
-import { getAuthUser } from "@/lib/auth";
 import { llpDataSchema } from "@/lib/schemas";
 import { rateLimit, RATE_LIMITS, rateLimitResponse } from "@/lib/rateLimit";
-import { logAudit } from "@/lib/audit";
 
 export async function POST(req: NextRequest) {
-  const { user, error: authError } = await getAuthUser(req);
-  if (authError) return authError;
-
-  // Rate limit: 30 requests per hour per user
-  const rl = rateLimit(`${user!.id}:downloadDocx`, RATE_LIMITS.downloadDocx);
+  // Rate limit: 30 requests per hour per IP
+  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "anonymous";
+  const rl = rateLimit(`${clientIp}:downloadDocx`, RATE_LIMITS.downloadDocx);
   if (!rl.allowed) return rateLimitResponse(rl.retryAfterMs);
 
   try {
@@ -26,11 +22,6 @@ export async function POST(req: NextRequest) {
     }
 
     const data = parsed.data as LLPData;
-
-    // Audit log (fire-and-forget)
-    logAudit(user!.id, "download_docx", req, {
-      metadata: { llpName: data.llpName || "unnamed" },
-    });
 
     const buf = await buildDocx(data);
     const name = (data.llpName || "draft").replace(/\s+/g, "_");

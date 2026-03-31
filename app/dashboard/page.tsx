@@ -1,6 +1,5 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useAuth } from "@/components/AuthProvider";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { LLPData, getPct, defaultData } from "@/types";
@@ -15,7 +14,6 @@ interface AgreementRow {
 }
 
 export default function DashboardPage() {
-  const { user, loading, signOut } = useAuth();
   const router = useRouter();
   const [agreements, setAgreements] = useState<AgreementRow[]>([]);
   const [fetching, setFetching] = useState(true);
@@ -25,16 +23,10 @@ export default function DashboardPage() {
   const [editName, setEditName] = useState("");
 
   useEffect(() => {
-    if (!loading && !user) router.replace("/login");
-  }, [user, loading, router]);
-
-  useEffect(() => {
-    if (!user) return;
     setFetching(true);
     supabase
       .from("agreements")
       .select("*")
-      .eq("user_id", user.id)
       .order("updated_at", { ascending: false })
       .then(({ data, error }) => {
         if (!error && data) {
@@ -42,13 +34,12 @@ export default function DashboardPage() {
         }
         setFetching(false);
       });
-  }, [user]);
+  }, []);
 
   const createNew = async () => {
-    if (!user) return;
     const result = await supabase
       .from("agreements")
-      .insert([{ data: defaultData(), step: "num_partners", is_done: false, user_id: user.id }])
+      .insert([{ data: defaultData(), step: "num_partners", is_done: false }])
       .select()
       .single();
 
@@ -63,10 +54,9 @@ export default function DashboardPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!user) return;
     if (!confirm("Delete this agreement? This cannot be undone.")) return;
     setDeleting(id);
-    await supabase.from("agreements").delete().eq("id", id).eq("user_id", user.id);
+    await supabase.from("agreements").delete().eq("id", id);
     setAgreements(prev => prev.filter(a => a.id !== id));
     setDeleting(null);
   };
@@ -77,17 +67,16 @@ export default function DashboardPage() {
   };
 
   const saveRename = async (id: string) => {
-    if (!user) return;
     const trimmed = editName.trim();
     setEditingId(null);
     setAgreements(prev => prev.map(a => {
       if (a.id !== id) return a;
       return { ...a, data: { ...a.data, llpName: trimmed } };
     }));
-    const { data: row } = await supabase.from("agreements").select("data").eq("id", id).eq("user_id", user.id).single();
+    const { data: row } = await supabase.from("agreements").select("data").eq("id", id).single();
     if (row) {
       const updatedData = { ...(row.data as LLPData), llpName: trimmed };
-      await supabase.from("agreements").update({ data: updatedData, updated_at: new Date().toISOString() }).eq("id", id).eq("user_id", user.id);
+      await supabase.from("agreements").update({ data: updatedData, updated_at: new Date().toISOString() }).eq("id", id);
     }
   };
 
@@ -97,12 +86,7 @@ export default function DashboardPage() {
     return name.includes(search.trim().toLowerCase());
   });
 
-  const handleLogout = async () => {
-    await signOut();
-    router.replace("/login");
-  };
-
-  if (loading || !user) {
+  if (fetching) {
     return (
       <div className="dash-loading">
         <div className="dash-spinner" />
@@ -131,17 +115,6 @@ export default function DashboardPage() {
             <div className="dash-logo-text">LLP Generator</div>
             <div className="dash-logo-sub">Agreement Dashboard</div>
           </div>
-        </div>
-        <div className="dash-header-right">
-          <span className="dash-email mobile-hide">{user.email}</span>
-          <button onClick={handleLogout} className="dash-logout-btn">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-              <polyline points="16 17 21 12 16 7" />
-              <line x1="21" y1="12" x2="9" y2="12" />
-            </svg>
-            Logout
-          </button>
         </div>
       </header>
 
@@ -198,27 +171,7 @@ export default function DashboardPage() {
         )}
 
         {/* ── Content Area ── */}
-        {fetching ? (
-          /* Skeleton Loaders */
-          <div className="dash-grid">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="skeleton-card" style={{ padding: 22 }}>
-                <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
-                  <div className="skeleton" style={{ width: 40, height: 40, borderRadius: 10 }} />
-                  <div style={{ flex: 1 }}>
-                    <div className="skeleton skeleton-title" style={{ marginBottom: 8 }} />
-                    <div className="skeleton skeleton-text" style={{ width: "45%" }} />
-                  </div>
-                </div>
-                <div className="skeleton skeleton-bar" style={{ marginBottom: 16 }} />
-                <div style={{ display: "flex", gap: 8 }}>
-                  <div className="skeleton" style={{ width: 100, height: 36, borderRadius: 10 }} />
-                  <div className="skeleton" style={{ width: 36, height: 36, borderRadius: 6 }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : agreements.length === 0 ? (
+        {agreements.length === 0 ? (
           /* Empty State */
           <div className="dash-empty animate-slideUp">
             <div className="dash-empty-icon">

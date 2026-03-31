@@ -6,26 +6,14 @@ import { createClient } from "@supabase/supabase-js";
  * 
  * Calls the `cleanup_expired_data` PostgreSQL function to delete:
  *   - Agreements inactive for > 30 days
- *   - Audit logs older than 90 days
  *
- * Security: Protected by a shared secret (CRON_SECRET).
  * Intended to be called by:
  *   - Vercel Cron Jobs (vercel.json)
  *   - External cron services (e.g., cron-job.org)
  *   - Manual admin trigger
- *
- * NOT a user-facing endpoint.
  */
 
-const CRON_SECRET = process.env.CRON_SECRET;
-
 export async function GET(req: NextRequest) {
-  // ── Auth: verify cron secret ──
-  const authHeader = req.headers.get("authorization");
-  if (!CRON_SECRET || authHeader !== `Bearer ${CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   // ── Build service-role client ──
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -45,7 +33,6 @@ export async function GET(req: NextRequest) {
     // Call the PostgreSQL retention function
     const { data, error } = await supabase.rpc("cleanup_expired_data", {
       agreement_retention_days: 30,
-      audit_log_retention_days: 90,
     });
 
     if (error) {

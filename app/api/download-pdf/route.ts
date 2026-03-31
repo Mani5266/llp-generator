@@ -1,30 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PRINT_CSS } from "@/lib/deed-template";
-import { getAuthUser } from "@/lib/auth";
 import { pdfInputSchema } from "@/lib/schemas";
 import { rateLimit, RATE_LIMITS, rateLimitResponse } from "@/lib/rateLimit";
-import { logAudit } from "@/lib/audit";
 
 /** Strip dangerous HTML: <script> tags, event handlers (onerror, onclick, etc.), javascript: URLs */
 function sanitizeHtml(raw: string): string {
   return raw
-    .replace(/<script[\s\S]*?<\/script>/gi, "")             // Remove <script>...</script>
-    .replace(/<script[^>]*>/gi, "")                          // Remove orphan <script> tags
-    .replace(/\son\w+\s*=\s*["'][^"']*["']/gi, "")          // Remove inline event handlers
-    .replace(/\son\w+\s*=\s*[^\s>]*/gi, "")                 // Remove unquoted event handlers
-    .replace(/javascript\s*:/gi, "blocked:")                 // Block javascript: URIs
-    .replace(/<iframe[\s\S]*?<\/iframe>/gi, "")              // Remove iframes
-    .replace(/<iframe[^>]*>/gi, "")                          // Remove orphan iframes
-    .replace(/<embed[^>]*>/gi, "")                           // Remove embeds
-    .replace(/<object[\s\S]*?<\/object>/gi, "");             // Remove objects
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<script[^>]*>/gi, "")
+    .replace(/\son\w+\s*=\s*["'][^"']*["']/gi, "")
+    .replace(/\son\w+\s*=\s*[^\s>]*/gi, "")
+    .replace(/javascript\s*:/gi, "blocked:")
+    .replace(/<iframe[\s\S]*?<\/iframe>/gi, "")
+    .replace(/<iframe[^>]*>/gi, "")
+    .replace(/<embed[^>]*>/gi, "")
+    .replace(/<object[\s\S]*?<\/object>/gi, "");
 }
 
 export async function POST(req: NextRequest) {
-  const { user, error: authError } = await getAuthUser(req);
-  if (authError) return authError;
-
-  // Rate limit: 30 requests per hour per user
-  const rl = rateLimit(`${user!.id}:downloadPdf`, RATE_LIMITS.downloadPdf);
+  // Rate limit: 30 requests per hour per IP
+  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "anonymous";
+  const rl = rateLimit(`${clientIp}:downloadPdf`, RATE_LIMITS.downloadPdf);
   if (!rl.allowed) return rateLimitResponse(rl.retryAfterMs);
 
   try {
@@ -39,11 +35,6 @@ export async function POST(req: NextRequest) {
     }
 
     const { html: bodyHtml, llpName } = parsed.data;
-
-    // Audit log (fire-and-forget)
-    logAudit(user!.id, "download_pdf", req, {
-      metadata: { llpName: llpName || "unnamed" },
-    });
 
     const safeName = String(llpName || "Draft").replace(/[<>"'&]/g, "");
     const safeBody = sanitizeHtml(String(bodyHtml || ""));

@@ -2,17 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { geminiJSON } from "@/lib/gemini";
 import { buildPrompt, buildSingleCardPrompt, buildExtractionResponse, AIReply, SingleCardExtraction } from "@/lib/prompts";
 import { validateUpdates } from "@/lib/validation";
-import { getAuthUser } from "@/lib/auth";
 import { chatInputSchema } from "@/lib/schemas";
 import { rateLimit, RATE_LIMITS, rateLimitResponse } from "@/lib/rateLimit";
-import { logAudit } from "@/lib/audit";
 
 export async function POST(req: NextRequest) {
-  const { user, error: authError } = await getAuthUser(req);
-  if (authError) return authError;
-
-  // Rate limit: 20 requests per hour per user
-  const rl = rateLimit(`${user!.id}:chat`, RATE_LIMITS.chat);
+  // Rate limit: 20 requests per hour per IP
+  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "anonymous";
+  const rl = rateLimit(`${clientIp}:chat`, RATE_LIMITS.chat);
   if (!rl.allowed) return rateLimitResponse(rl.retryAfterMs);
 
   try {
@@ -34,16 +30,10 @@ export async function POST(req: NextRequest) {
     const { message, data, step, files } = parsed.data;
     const hasFiles = files && files.length > 0;
 
-    // Audit log (fire-and-forget)
-    logAudit(user!.id, "chat", req, {
-      metadata: { step, hasFiles, messageLength: message.length },
-    });
-
     let result: AIReply;
 
     if (hasFiles) {
       // ── Per-card extraction: process each Aadhaar card individually ──
-      // This gives much better accuracy than sending all cards at once.
       const cardPrompt = buildSingleCardPrompt();
 
       const extractions = await Promise.all(
@@ -57,8 +47,6 @@ export async function POST(req: NextRequest) {
             return ext;
           } catch (err) {
             console.error(`[ocr] Card ${idx + 1} extraction failed:`, err);
-            // Return empty extraction on failure — the response builder
-            // will report this card's fields as missing
             return {
               fullName: "",
               salutation: "Mr.",
@@ -72,7 +60,6 @@ export async function POST(req: NextRequest) {
         })
       );
 
-      // Build the final response from merged per-card results
       result = buildExtractionResponse(extractions, data.numPartners || files.length);
     } else {
       // ── Normal conversational flow ──

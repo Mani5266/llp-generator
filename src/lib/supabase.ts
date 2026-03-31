@@ -11,13 +11,6 @@ if (!supabaseKey) {
 }
 
 /**
- * Browser-side Supabase client.
- *
- * Uses @supabase/ssr's createBrowserClient which stores auth tokens in
- * cookies (not localStorage), making them accessible to the Next.js
- * middleware and server-side code.
- *
- * createBrowserClient is a singleton — calling this multiple times
- * returns the same instance.
+ * Browser-side Supabase client (singleton).
  */
 export const supabase = createBrowserClient(supabaseUrl, supabaseKey);

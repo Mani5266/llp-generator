@@ -4,17 +4,15 @@ const BUCKET = "documents";
 const SIGNED_URL_EXPIRY = 300; // 5 minutes
 
 /**
- * Upload a file to the user's private folder in Supabase Storage.
- * Files are stored as: documents/{userId}/{filename}
+ * Upload a file to Supabase Storage.
+ * Files are stored as: documents/{filename}
  *
- * @param userId - The authenticated user's ID
  * @param filename - The file name (e.g., "LLP_Agreement_Acme.docx")
  * @param file - The file data as Blob, Buffer, or File
  * @param contentType - MIME type (e.g., "application/pdf")
- * @returns The storage path (e.g., "{userId}/LLP_Agreement_Acme.docx")
+ * @returns The storage path
  */
 export async function uploadFile(
-  userId: string,
   filename: string,
   file: Blob | Buffer,
   contentType: string
@@ -25,27 +23,24 @@ export async function uploadFile(
     .replace(/\0/g, "")
     .slice(0, 200);
 
-  const storagePath = `${userId}/${safeName}`;
-
   const { error } = await supabase.storage
     .from(BUCKET)
-    .upload(storagePath, file, {
+    .upload(safeName, file, {
       contentType,
-      upsert: true, // overwrite if exists
+      upsert: true,
     });
 
   if (error) {
     return { path: "", error: error.message };
   }
 
-  return { path: storagePath, error: null };
+  return { path: safeName, error: null };
 }
 
 /**
  * Generate a signed download URL that expires after 5 minutes.
- * NEVER use getPublicUrl() — the bucket is private.
  *
- * @param storagePath - The file path in storage (e.g., "{userId}/file.docx")
+ * @param storagePath - The file path in storage
  * @param expiresIn - Expiry in seconds (default: 300 = 5 minutes)
  * @returns A time-limited signed URL
  */
@@ -65,9 +60,9 @@ export async function getSignedDownloadUrl(
 }
 
 /**
- * Delete a file from the user's private folder.
+ * Delete a file from storage.
  *
- * @param storagePath - The file path in storage (e.g., "{userId}/file.docx")
+ * @param storagePath - The file path in storage
  */
 export async function deleteFile(
   storagePath: string
@@ -80,14 +75,12 @@ export async function deleteFile(
 }
 
 /**
- * List all files in a user's private folder.
- *
- * @param userId - The authenticated user's ID
+ * List all files in storage.
  */
-export async function listUserFiles(userId: string) {
+export async function listFiles() {
   const { data, error } = await supabase.storage
     .from(BUCKET)
-    .list(userId, {
+    .list("", {
       sortBy: { column: "created_at", order: "desc" },
     });
 
