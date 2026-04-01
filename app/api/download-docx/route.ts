@@ -3,8 +3,16 @@ import { Document, Packer, Paragraph, TextRun, AlignmentType, UnderlineType } fr
 import { LLPData, numWords, fmtINR, ordinalParty, fmtPartnerAddr, fmtRegAddr } from "@/types";
 import { llpDataSchema } from "@/lib/schemas";
 import { rateLimit, RATE_LIMITS, rateLimitResponse } from "@/lib/rateLimit";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 export async function POST(req: NextRequest) {
+  // ── AUTH CHECK ──
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   // Rate limit: 30 requests per hour per IP
   const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "anonymous";
   const rl = rateLimit(`${clientIp}:downloadDocx`, RATE_LIMITS.downloadDocx);

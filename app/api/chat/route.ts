@@ -4,8 +4,16 @@ import { buildPrompt, buildSingleCardPrompt, buildExtractionResponse, AIReply, S
 import { validateUpdates } from "@/lib/validation";
 import { chatInputSchema } from "@/lib/schemas";
 import { rateLimit, RATE_LIMITS, rateLimitResponse } from "@/lib/rateLimit";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 export async function POST(req: NextRequest) {
+  // ── AUTH CHECK ──
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   // Rate limit: 20 requests per hour per IP
   const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "anonymous";
   const rl = rateLimit(`${clientIp}:chat`, RATE_LIMITS.chat);

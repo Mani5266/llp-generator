@@ -21,8 +21,14 @@ export default function DashboardPage() {
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
+    // Get user email for display
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUserEmail(user?.email || null);
+    });
+
     setFetching(true);
     supabase
       .from("agreements")
@@ -36,10 +42,17 @@ export default function DashboardPage() {
       });
   }, []);
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push("/login");
+  };
+
   const createNew = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    const userId = user?.id;
     const result = await supabase
       .from("agreements")
-      .insert([{ data: defaultData(), step: "num_partners", is_done: false }])
+      .insert([{ data: defaultData(), step: "num_partners", is_done: false, user_id: userId }])
       .select()
       .single();
 
@@ -115,6 +128,36 @@ export default function DashboardPage() {
             <div className="dash-logo-text">LLP Generator</div>
             <div className="dash-logo-sub">Agreement Dashboard</div>
           </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          {userEmail && (
+            <span style={{ fontSize: "0.8rem", color: "#94a3b8", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {userEmail}
+            </span>
+          )}
+          <button
+            onClick={handleLogout}
+            title="Logout"
+            style={{
+              background: "none",
+              border: "1px solid #1e293b",
+              borderRadius: 8,
+              padding: "6px 10px",
+              cursor: "pointer",
+              color: "#94a3b8",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.4rem",
+              fontSize: "0.8rem",
+              fontWeight: 500,
+              transition: "all 0.2s",
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            Logout
+          </button>
         </div>
       </header>
 

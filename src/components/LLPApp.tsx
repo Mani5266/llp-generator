@@ -47,11 +47,15 @@ export default function LLPApp() {
         }
       });
     } else {
-      supabase.from("agreements").insert([{ data: defaultData(), step: "num_partners", is_done: false }]).select().single().then(({ data: dbData, error }) => {
-        if (!error && dbData) {
-          setSessionId(dbData.id);
-          window.history.replaceState({}, "", `?id=${dbData.id}`);
-        }
+      // Get user_id for the insert
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        const userId = user?.id;
+        supabase.from("agreements").insert([{ data: defaultData(), step: "num_partners", is_done: false, user_id: userId }]).select().single().then(({ data: dbData, error }) => {
+          if (!error && dbData) {
+            setSessionId(dbData.id);
+            window.history.replaceState({}, "", `?id=${dbData.id}`);
+          }
+        });
       });
     }
   }, [router]);
