@@ -4,15 +4,14 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 
-/* ── Checkmark icon used in feature bullets ─────────────────── */
+/* ── Check icon for feature bullets ─────────────────────────── */
 function CheckIcon() {
   return (
     <svg
-      width="13"
-      height="13"
+      className="auth-check-icon"
       viewBox="0 0 24 24"
       fill="none"
-      stroke="#10b981"
+      stroke="currentColor"
       strokeWidth="2.5"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -22,19 +21,27 @@ function CheckIcon() {
   );
 }
 
-/* ── Feature bullet ─────────────────────────────────────────── */
-function Feature({ text }: { text: string }) {
+/* ── Alert icon ─────────────────────────────────────────────── */
+function AlertIcon() {
   return (
-    <div className="flex items-center gap-3 text-[0.95rem] font-medium text-white/80">
-      <div className="w-[22px] h-[22px] rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
-        <CheckIcon />
-      </div>
-      {text}
-    </div>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="8" x2="12" y2="12" />
+      <line x1="12" y1="16" x2="12.01" y2="16" />
+    </svg>
   );
 }
 
-/* ── Main page ──────────────────────────────────────────────── */
+function SuccessIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+      <polyline points="22 4 12 14.01 9 11.01" />
+    </svg>
+  );
+}
+
+/* ── Main Login Page ────────────────────────────────────────── */
 export default function LoginPage() {
   const router = useRouter();
   const [mode, setMode] = useState<"login" | "signup">("login");
@@ -124,8 +131,8 @@ export default function LoginPage() {
   /* ── Loading gate ───────────────────────────────────────── */
   if (checking) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white text-slate-400 font-sans">
-        Loading...
+      <div className="auth-loading">
+        <div className="auth-spinner" />
       </div>
     );
   }
@@ -134,96 +141,95 @@ export default function LoginPage() {
   const isLogin = mode === "login";
 
   return (
-    <div className="min-h-screen flex font-sans">
-      {/* ── Left panel ──────────────────────────────────────── */}
-      <div className="w-1/2 min-h-screen bg-slate-900 text-white flex flex-col justify-between p-10 relative overflow-hidden">
-        {/* decorative gradient */}
-        <div className="absolute -top-20 -right-20 w-[350px] h-[350px] rounded-full bg-[radial-gradient(circle,rgba(99,102,241,0.15)_0%,transparent_70%)]" />
-        <div className="absolute top-0 right-0 w-full h-1.5 bg-[linear-gradient(90deg,#0f172a_0%,#1e293b_40%,#334155_70%,#0f172a_100%)]" />
+    <div className="auth-container">
+      {/* ── Left Panel: Brand ─────────────────────────────── */}
+      <div className="auth-brand-panel">
+        {/* Abstract gradient shapes */}
+        <div className="auth-brand-shape auth-brand-shape-1" />
+        <div className="auth-brand-shape auth-brand-shape-2" />
+        <div className="auth-brand-shape auth-brand-shape-3" />
 
-        {/* brand */}
-        <div>
-          <div className="text-lg font-extrabold tracking-tight">OnEasy</div>
-          <div className="w-full h-px bg-white/[0.08] my-8" />
-        </div>
+        <div className="auth-brand-content">
+          <div className="auth-brand-logo">OnEasy</div>
 
-        {/* content */}
-        <div className="flex-1 flex flex-col justify-center">
-          <h1 className="text-[2.5rem] font-black tracking-tight leading-tight mb-5">
-            LLP Agreement Generator
+          <h1 className="auth-brand-heading">
+            LLP Agreement<br />Generator
           </h1>
-          <p className="text-base text-white/55 leading-relaxed max-w-[420px]">
-            Draft professional LLP agreements with AI assistance. Comprehensive
-            clauses, compliant structure, and instant export.
+
+          <p className="auth-brand-subtext">
+            Draft professional LLP agreements with AI assistance.
+            Comprehensive clauses, compliant structure, and instant export.
           </p>
-          <div className="mt-12 flex flex-col gap-4">
-            <Feature text="AI-Powered Agreement Drafting" />
-            <Feature text="Comprehensive Clause Library" />
-            <Feature text="Instant DOCX & PDF Export" />
-          </div>
+
+          <ul className="auth-feature-list">
+            <li className="auth-feature-item">
+              <CheckIcon />
+              AI-Powered Agreement Drafting
+            </li>
+            <li className="auth-feature-item">
+              <CheckIcon />
+              Comprehensive Clause Library
+            </li>
+            <li className="auth-feature-item">
+              <CheckIcon />
+              Instant DOCX &amp; PDF Export
+            </li>
+          </ul>
         </div>
 
-        <div className="text-xs text-white/30">
-          &copy; 2026 OnEasy. All rights reserved.
+        <div className="auth-brand-footer">
+          &copy; {new Date().getFullYear()} OnEasy. All rights reserved.
         </div>
       </div>
 
-      {/* ── Right panel ─────────────────────────────────────── */}
-      <div className="w-1/2 min-h-screen flex items-center justify-center bg-white p-10">
-        <div className="w-full max-w-[420px]">
-          <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight mb-1">
+      {/* ── Right Panel: Form ─────────────────────────────── */}
+      <div className="auth-form-panel">
+        <div className="auth-form-wrapper">
+          <h2 className="auth-form-title">
             {isLogin ? "Sign in to your account" : "Create your account"}
           </h2>
-          <p className="text-sm text-slate-400 mb-8">
+          <p className="auth-form-subtitle">
             {isLogin
               ? "Enter your credentials to access the dashboard."
               : "Enter your details to get started."}
           </p>
 
-          {/* tabs */}
-          <div className="flex mb-8 border border-slate-200 rounded-[10px] overflow-hidden">
+          {/* Tabs */}
+          <div className="auth-tab-group">
             <button
               type="button"
               onClick={() => switchTab("login")}
-              className={`flex-1 py-3 text-sm font-semibold transition-all border-none cursor-pointer ${
-                isLogin
-                  ? "bg-slate-900 text-white"
-                  : "bg-transparent text-slate-400"
-              }`}
+              className={`auth-tab ${isLogin ? "auth-tab-active" : ""}`}
             >
               Login
             </button>
             <button
               type="button"
               onClick={() => switchTab("signup")}
-              className={`flex-1 py-3 text-sm font-semibold transition-all border-none cursor-pointer ${
-                !isLogin
-                  ? "bg-slate-900 text-white"
-                  : "bg-transparent text-slate-400"
-              }`}
+              className={`auth-tab ${!isLogin ? "auth-tab-active" : ""}`}
             >
               Sign Up
             </button>
           </div>
 
-          {/* messages */}
+          {/* Alerts */}
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-2.5 rounded-lg text-sm mb-4">
+            <div className="auth-alert auth-alert-error animate-fadeIn">
+              <AlertIcon />
               {error}
             </div>
           )}
           {success && (
-            <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-2.5 rounded-lg text-sm mb-4">
+            <div className="auth-alert auth-alert-success animate-fadeIn">
+              <SuccessIcon />
               {success}
             </div>
           )}
 
-          {/* form */}
-          <form onSubmit={handleSubmit}>
-            <div className="mb-5">
-              <label className="block text-sm text-slate-900 mb-2 font-semibold">
-                Email Address
-              </label>
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="auth-form">
+            <div className="auth-field">
+              <label className="auth-label">Email Address</label>
               <input
                 type="email"
                 value={email}
@@ -231,14 +237,12 @@ export default function LoginPage() {
                 placeholder="name@company.com"
                 required
                 autoComplete="email"
-                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg text-slate-900 text-[0.95rem] outline-none focus:border-slate-900 transition-colors placeholder:text-slate-400"
+                className="auth-input"
               />
             </div>
 
-            <div className="mb-5">
-              <label className="block text-sm text-slate-900 mb-2 font-semibold">
-                Password
-              </label>
+            <div className="auth-field">
+              <label className="auth-label">Password</label>
               <input
                 type="password"
                 value={password}
@@ -247,22 +251,20 @@ export default function LoginPage() {
                 required
                 minLength={6}
                 autoComplete={isLogin ? "current-password" : "new-password"}
-                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg text-slate-900 text-[0.95rem] outline-none focus:border-slate-900 transition-colors placeholder:text-slate-400"
+                className="auth-input"
               />
             </div>
 
             {!isLogin && (
-              <div className="mb-5">
-                <label className="block text-sm text-slate-900 mb-2 font-semibold">
-                  Confirm Password
-                </label>
+              <div className="auth-field animate-fadeIn">
+                <label className="auth-label">Confirm Password</label>
                 <input
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Confirm your password"
                   autoComplete="new-password"
-                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg text-slate-900 text-[0.95rem] outline-none focus:border-slate-900 transition-colors placeholder:text-slate-400"
+                  className="auth-input"
                 />
               </div>
             )}
@@ -270,32 +272,34 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3.5 bg-slate-900 text-white border-none rounded-lg text-[0.95rem] font-semibold cursor-pointer mt-2 transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="auth-submit"
             >
               {loading ? "..." : isLogin ? "Sign In" : "Create Account"}
             </button>
           </form>
 
-          <div className="text-center mt-5 text-sm text-slate-400">
+          <div className="auth-switch-text">
             {isLogin ? (
               <>
                 Don&apos;t have an account?{" "}
-                <a
+                <button
+                  type="button"
                   onClick={() => switchTab("signup")}
-                  className="text-slate-900 font-semibold cursor-pointer hover:underline"
+                  className="auth-switch-btn"
                 >
                   Sign up
-                </a>
+                </button>
               </>
             ) : (
               <>
                 Already have an account?{" "}
-                <a
+                <button
+                  type="button"
                   onClick={() => switchTab("login")}
-                  className="text-slate-900 font-semibold cursor-pointer hover:underline"
+                  className="auth-switch-btn"
                 >
                   Login
-                </a>
+                </button>
               </>
             )}
           </div>

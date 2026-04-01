@@ -129,30 +129,11 @@ export default function DashboardPage() {
             <div className="dash-logo-sub">Agreement Dashboard</div>
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+        <div className="dash-header-right">
           {userEmail && (
-            <span style={{ fontSize: "0.8rem", color: "#94a3b8", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {userEmail}
-            </span>
+            <span className="dash-email">{userEmail}</span>
           )}
-          <button
-            onClick={handleLogout}
-            title="Logout"
-            style={{
-              background: "none",
-              border: "1px solid #1e293b",
-              borderRadius: 8,
-              padding: "6px 10px",
-              cursor: "pointer",
-              color: "#94a3b8",
-              display: "flex",
-              alignItems: "center",
-              gap: "0.4rem",
-              fontSize: "0.8rem",
-              fontWeight: 500,
-              transition: "all 0.2s",
-            }}
-          >
+          <button onClick={handleLogout} title="Logout" className="dash-logout-btn">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
             </svg>
