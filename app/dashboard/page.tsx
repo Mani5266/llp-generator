@@ -126,7 +126,7 @@ export default function DashboardPage() {
           </div>
           <div>
             <div className="dash-logo-text">OnEasy</div>
-            <div className="dash-logo-sub">Partnership Deed</div>
+            <div className="dash-logo-sub">LLP Agreement</div>
           </div>
         </div>
         <div className="dash-header-right">

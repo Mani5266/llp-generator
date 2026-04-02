@@ -44,7 +44,7 @@ export default function DocumentPanel({ html, pct, missing, isManual, onDocx, on
           </div>
           <div style="text-align:center">
             <p style="font-size:16px;font-weight:700;color:#3e4c5e;margin-bottom:6px">Your LLP Agreement</p>
-            <p style="font-size:13px;line-height:1.6;max-width:280px;margin:0 auto">Answer the questions in the chat panel and watch your Partnership Deed come to life.</p>
+            <p style="font-size:13px;line-height:1.6;max-width:280px;margin:0 auto">Answer the questions in the chat panel and watch your LLP Agreement come to life.</p>
           </div>
         </div>
       `);

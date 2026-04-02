@@ -14,7 +14,7 @@ interface Props {
 
 export default function ChatPanel({data,step,done,pct,sessionId,onUpdates,onStep,onDone,onRestart,onRestore,onBackToDashboard}:Props) {
   const [msgs,setMsgs] = useState<Msg[]>([
-    { role:"agent", content:"Welcome to LLP Agreement Assistant.\n\nI will guide you through creating a legally compliant LLP Partnership Deed by collecting the required details step by step.\n\nTo begin, how many partners will be part of the LLP firm?", options:["2","3","4","5","5+"] },
+    { role:"agent", content:"Welcome to LLP Agreement Assistant.\n\nI will guide you through creating a legally compliant LLP Agreement by collecting the required details step by step.\n\nTo begin, how many partners will be part of the LLP firm?", options:["2","3","4","5","5+"] },
   ]);
   const [input,setInput] = useState("");
   const [busy,setBusy]   = useState(false);
@@ -132,7 +132,7 @@ export default function ChatPanel({data,step,done,pct,sessionId,onUpdates,onStep
           </div>
           <div>
             <div className="chat-header-title">OnEasy</div>
-            <div className="chat-header-sub">Partnership Deed</div>
+            <div className="chat-header-sub">LLP Agreement</div>
           </div>
         </div>
         <div style={{display:"flex",gap:6,alignItems:"center"}}>

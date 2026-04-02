@@ -153,11 +153,11 @@ export default function LoginPage() {
           <div className="auth-brand-logo">OnEasy</div>
 
           <h1 className="auth-brand-heading">
-            Partnership Deed<br />Generator
+            LLP Agreement<br />Generator
           </h1>
 
           <p className="auth-brand-subtext">
-            Draft professional Partnership Deeds with AI assistance.
+            Draft professional LLP Agreements with AI assistance.
             Comprehensive clauses, compliant structure, and instant export.
           </p>
 
