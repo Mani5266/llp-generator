@@ -141,7 +141,7 @@ export default function DocumentPanel({ html, pct, missing, isManual, onDocx, on
             className="btn-ghost"
             style={{padding:"6px 10px",fontSize:12}}
           >
-            {copied ? <CheckCircle size={13} color="#059669" /> : <FileText size={13} />}
+            {copied ? <CheckCircle size={13} color="#c8922a" /> : <FileText size={13} />}
             {copied ? "Copied" : "Copy"}
           </button>
 

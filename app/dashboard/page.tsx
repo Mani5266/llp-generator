@@ -299,10 +299,10 @@ export default function DashboardPage() {
                     <div className="dash-progress-track">
                       <div
                         className="dash-progress-fill progress-bar"
-                        style={{ width: `${pct}%`, background: pct === 100 ? "#059669" : "#0c1929" }}
+                        style={{ width: `${pct}%`, background: pct === 100 ? "#c8922a" : "#0c1929" }}
                       />
                     </div>
-                    <span className="dash-progress-pct" style={{ color: pct === 100 ? "#059669" : "#0c1929" }}>
+                    <span className="dash-progress-pct" style={{ color: pct === 100 ? "#c8922a" : "#0c1929" }}>
                       {pct}%
                     </span>
                   </div>
