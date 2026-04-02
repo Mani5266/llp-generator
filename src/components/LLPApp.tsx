@@ -192,7 +192,7 @@ export default function LLPApp() {
       {/* Mobile Tab Bar */}
       <div className="mobile-tab-bar" style={{
         position:"fixed",bottom:0,left:0,right:0,zIndex:50,
-        background:"#0c1929",
+        background:"#0f1a2e",
         borderTop:"1px solid rgba(255, 255, 255, 0.06)",
         padding:"6px 8px",
         gap:6,
