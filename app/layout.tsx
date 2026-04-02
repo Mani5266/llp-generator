@@ -3,8 +3,8 @@ import "./globals.css";
 import ThemeProvider from "@/components/ThemeProvider";
 
 export const metadata: Metadata = {
-  title: "LLP Agreement Generator",
-  description: "AI-powered LLP Agreement for India",
+  title: "OnEasy - Partnership Deed",
+  description: "AI-powered Partnership Deed Generator for India",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -125,8 +125,8 @@ export default function DashboardPage() {
             </svg>
           </div>
           <div>
-            <div className="dash-logo-text">LLP Generator</div>
-            <div className="dash-logo-sub">Agreement Dashboard</div>
+            <div className="dash-logo-text">OnEasy</div>
+            <div className="dash-logo-sub">Partnership Deed</div>
           </div>
         </div>
         <div className="dash-header-right">
