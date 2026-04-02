@@ -28,9 +28,10 @@ CREATE TABLE IF NOT EXISTS public.agreements (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
   data        JSONB DEFAULT '{}',
-  step        INT DEFAULT 0,
+  step        TEXT DEFAULT 'num_partners',
   is_done     BOOLEAN DEFAULT false,
-  messages    JSONB DEFAULT '[]'
+  messages    JSONB DEFAULT '[]',
+  user_id     UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
 
